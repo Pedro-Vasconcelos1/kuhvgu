@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpSinergia REWORK - Gestão Visual de Operação e Alocação</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="brand">
+          <div class="brand-icon">
+            <i data-lucide="layout-grid"></i>
+          </div>
+          <div class="brand-text">
+            <h1>OpSinergia <span class="badge-sector">REWORK</span></h1>
+            <p class="subtitle">Turno 2 (14:00h - 23:00h)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <!-- Control Bar: Date, Turma & Quick Search -->
+        <div class="control-group">
+          <div class="input-with-icon" title="Data da Operação">
+            <i data-lucide="calendar"></i>
+            <input type="date" id="dateSelect" class="form-input" value="2026-08-10">
+          </div>
+
+          <div class="input-with-icon" title="Filtrar por Turma">
+            <i data-lucide="users"></i>
+            <select id="turmaSelect" class="form-select">
+              <option value="ALL">Todas as Turmas (AA, AB, AC, AD, B)</option>
+              <option value="AA">Turma AA (Vermelho)</option>
+              <option value="AB">Turma AB (Amarelo)</option>
+              <option value="AC">Turma AC (Ciano)</option>
+              <option value="AD">Turma AD (Lilás)</option>
+              <option value="B">Turma B</option>
+            </select>
+          </div>
+
+          <div class="search-box">
+            <i data-lucide="search"></i>
+            <input type="text" id="searchInput" placeholder="Buscar por nome, RE, turma ou cargo..." class="form-input">
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="btnNewOperator" class="btn btn-primary">
+          <i data-lucide="user-plus"></i>
+          Novo Operador
+        </button>
+        <button id="btnExport" class="btn btn-secondary" title="Exportar dados / Imprimir">
+          <i data-lucide="download"></i>
+          Exportar
+        </button>
+        <button id="btnResetData" class="btn btn-ghost btn-icon" title="Resetar para Dados Demonstrativos">
+          <i data-lucide="rotate-ccw"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Operational KPI Metrics Bar -->
+    <section class="kpi-bar">
+      <div class="kpi-card highlight">
+        <div class="kpi-icon icon-blue"><i data-lucide="users"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Escalados Hoje</span>
+          <span class="kpi-value" id="kpiTotalScaled">0</span>
+          <span class="kpi-sub" id="kpiTotalScaledSub">Base do REWORK</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon icon-green"><i data-lucide="user-check"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Presentes no Rework</span>
+          <span class="kpi-value" id="kpiPresent">0</span>
+          <span class="kpi-sub" id="kpiPresentSub">Alocados nos Postos</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon icon-orange"><i data-lucide="arrow-up-right"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Sinergia Externa</span>
+          <span class="kpi-value" id="kpiExternalSynergy">0</span>
+          <span class="kpi-sub">Emprestados para Fora</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon icon-gray"><i data-lucide="calendar-off"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Folga / Falta</span>
+          <span class="kpi-value" id="kpiOffAbsent">0</span>
+          <span class="kpi-sub" id="kpiOffAbsentSub">0 Folgas | 0 Faltas</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon icon-purple"><i data-lucide="utensils"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Janta 18:30h</span>
+          <span class="kpi-value" id="kpiJantar18">0</span>
+          <span class="kpi-sub">1ª Turma de Pausa</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon icon-cyan"><i data-lucide="utensils"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Janta 19:30h</span>
+          <span class="kpi-value" id="kpiJantar19">0</span>
+          <span class="kpi-sub">2ª Turma de Pausa</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Navigation Tabs Bar (Clean 2 Tabs) -->
+    <nav class="view-tabs-bar">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="tabMap">
+          <i data-lucide="map"></i>
+          Planta Baixa (Mapa Real Rework)
+        </button>
+        <button class="tab-btn" data-tab="tabTable">
+          <i data-lucide="table"></i>
+          Matriz de Escala (Lista Completa)
+        </button>
+      </div>
+
+      <div class="quick-status-filters" id="statusFilterPills">
+        <button class="filter-pill active" data-status="ALL">Todos</button>
+        <button class="filter-pill pill-present" data-status="PRESENT">Presentes</button>
+        <button class="filter-pill pill-synergy" data-status="SYNERGY">Sinergias</button>
+        <button class="filter-pill pill-off" data-status="OFF">Folgas</button>
+        <button class="filter-pill pill-absent" data-status="ABSENT">Faltas</button>
+      </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- TAB 1: PLANTA BAIXA REAL REWORK (2D Interactive Grid) -->
+      <section id="tabMap" class="tab-content active">
+        <div class="floor-plan-wrapper">
+          <div class="floor-plan-header">
+            <div class="floor-title">
+              <i data-lucide="map-pin"></i>
+              <h2>Layout Físico do Setor REWORK</h2>
+              <span class="floor-instruction">Dica: Arraste os cartões dos operadores entre os blocos para alocar.</span>
+            </div>
+            <div class="floor-actions">
+              <span class="legend-item"><span class="dot dot-active"></span> Ativo no Posto</span>
+              <span class="legend-item"><span class="dot dot-synergy-ext"></span> Sinergia Externa</span>
+              <span class="legend-item"><span class="dot dot-leader"></span> Líder / Suporte</span>
+            </div>
+          </div>
+
+          <div class="floor-grid-container">
+            <!-- 2D Spatial Grid matching the user's diagram -->
+            <div class="rework-layout-grid">
+              
+              <!-- Top Left: BUFFER (Dividido em Guardiões do Buffer e Buffer de Saída) -->
+              <div class="zone-card zone-buffer">
+                <div class="zone-header">
+                  <div class="zone-info">
+                    <span class="zone-badge">1</span>
+                    <div>
+                      <h3>BUFFER</h3>
+                      <div class="zone-ops-bar">
+                        <i data-lucide="shield-check"></i>
+                        <span class="ops-label">Ops:</span>
+                        <select class="ops-select" data-sector="buffer" id="ops-select-buffer">
+                          <!-- Filled dynamically by JS -->
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="zone-counter">
+                    <span class="count-value" id="count-buffer">0</span>
+                  </div>
+                </div>
+
+                <!-- Sub-divisões do Buffer -->
+                <div class="buffer-subdivisions">
+                  <div class="buffer-sub-box" data-zone-id="buffer_guardioes">
+                    <div class="buffer-sub-header">
+                      <span>🛡️ Guardiões do Buffer</span>
+                      <span class="count-sub" id="count-buffer_guardioes">0</span>
+                    </div>
+                    <div class="zone-drop-area sub-drop-area" id="drop-buffer_guardioes">
+                      <!-- Operator Cards -->
+                    </div>
+                  </div>
+
+                  <div class="buffer-sub-box" data-zone-id="buffer_saida">
+                    <div class="buffer-sub-header">
+                      <span>📦 Buffer de Saída</span>
+                      <span class="count-sub" id="count-buffer_saida">0</span>
+                    </div>
+                    <div class="zone-drop-area sub-drop-area" id="drop-buffer_saida">
+                      <!-- Operator Cards -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top Right: ILHAS (Bancadas em Dupla) -->
+              <div class="zone-card zone-ilhas" data-zone-id="ilhas">
+                <div class="zone-header">
+                  <div class="zone-info">
+                    <span class="zone-badge">2</span>
+                    <div>
+                      <h3>ILHAS</h3>
+                      <div class="zone-ops-bar">
+                        <i data-lucide="shield-check"></i>
+                        <span class="ops-label">Ops:</span>
+                        <select class="ops-select" data-sector="ilhas" id="ops-select-ilhas">
+                          <!-- Filled dynamically by JS -->
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="zone-counter">
+                    <span class="count-value" id="count-ilhas">0</span>
+                  </div>
+                </div>
+                <div class="zone-subtext">Duplas de trabalho (Devem ser da mesma Turma)</div>
+                <div class="zone-drop-area ilhas-grid-area" id="drop-ilhas">
+                  <!-- Duplas Rendered Dynamically -->
+                </div>
+              </div>
+
+              <!-- Middle Left: ILHA DAS OPORTUNIDADES -->
+              <div class="zone-card zone-oportunidades" data-zone-id="oportunidades">
+                <div class="zone-header">
+                  <div class="zone-info">
+                    <span class="zone-badge">3</span>
+                    <div>
+                      <h3>ILHA DAS OPORTUNIDADES</h3>
+                      <div class="zone-ops-bar">
+                        <i data-lucide="shield-check"></i>
+                        <span class="ops-label">Ops:</span>
+                        <select class="ops-select" data-sector="oportunidades" id="ops-select-oportunidades">
+                          <!-- Filled dynamically by JS -->
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="zone-counter">
+                    <span class="count-value" id="count-oportunidades">0</span>
+                  </div>
+                </div>
+                <div class="zone-subtext">Tratamento de itens especiais & Salvados</div>
+                <div class="zone-drop-area" id="drop-oportunidades">
+                  <!-- Operator Cards -->
+                </div>
+              </div>
+
+              <!-- Middle Right: ATRELAMENTO -->
+              <div class="zone-card zone-atrelamento" data-zone-id="atrelamento">
+                <div class="zone-header">
+                  <div class="zone-info">
+                    <span class="zone-badge">4</span>
+                    <div>
+                      <h3>ATRELAMENTO</h3>
+                      <div class="zone-ops-bar">
+                        <i data-lucide="shield-check"></i>
+                        <span class="ops-label">Ops:</span>
+                        <select class="ops-select" data-sector="atrelamento" id="ops-select-atrelamento">
+                          <!-- Filled dynamically by JS -->
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="zone-counter">
+                    <span class="count-value" id="count-atrelamento">0</span>
+                  </div>
+                </div>
+                <div class="zone-subtext">Vinculação de etiquetas e SKUs</div>
+                <div class="zone-drop-area" id="drop-atrelamento">
+                  <!-- Operator Cards -->
+                </div>
+              </div>
+
+              <!-- Bottom Left: Pool de Apoio -->
+              <div class="zone-card zone-dock" data-zone-id="dock">
+                <div class="zone-header">
+                  <div class="zone-info">
+                    <span class="zone-badge"><i data-lucide="user-check"></i></span>
+                    <h3>POOL DE APOIO / SEM POSTO</h3>
+                  </div>
+                  <div class="zone-counter">
+                    <span class="count-value" id="count-dock">0</span>
+                  </div>
+                </div>
+                <div class="zone-subtext">Operadores aguardando definição de posto</div>
+                <div class="zone-drop-area" id="drop-dock">
+                  <!-- Operator Cards -->
+                </div>
+              </div>
+
+              <!-- Bottom Right Split: FECHAMENTO AUTOMÁTICO & FECHAMENTO CPT -->
+              <div class="bottom-split-container">
+                <!-- Sub-box Left: FECHAMENTO AUTOMÁTICO -->
+                <div class="zone-card zone-fechamento-aut" data-zone-id="fechamento_aut">
+                  <div class="zone-header">
+                    <div class="zone-info">
+                      <span class="zone-badge">5</span>
+                      <div>
+                        <h3>FECHAMENTO AUT</h3>
+                        <div class="zone-ops-bar">
+                          <i data-lucide="shield-check"></i>
+                          <span class="ops-label">Ops:</span>
+                          <select class="ops-select" data-sector="fechamento_aut" id="ops-select-fechamento_aut">
+                            <!-- Filled dynamically by JS -->
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="zone-counter">
+                      <span class="count-value" id="count-fechamento_aut">0</span>
+                    </div>
+                  </div>
+                  <div class="zone-subtext">Empacotamento & Paletização Aut.</div>
+                  <div class="zone-drop-area" id="drop-fechamento_aut">
+                    <!-- Operator Cards -->
+                  </div>
+                </div>
+
+                <!-- Sub-box Right: FECHAMENTO CPT -->
+                <div class="zone-card zone-fechamento-cpt" data-zone-id="fechamento_cpt">
+                  <div class="zone-header">
+                    <div class="zone-info">
+                      <span class="zone-badge">6</span>
+                      <div>
+                        <h3>FECHAMENTO CPT</h3>
+                        <div class="zone-ops-bar">
+                          <i data-lucide="shield-check"></i>
+                          <span class="ops-label">Ops:</span>
+                          <select class="ops-select" data-sector="fechamento_cpt" id="ops-select-fechamento_cpt">
+                            <!-- Filled dynamically by JS -->
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="zone-counter">
+                      <span class="count-value" id="count-fechamento_cpt">0</span>
+                    </div>
+                  </div>
+                  <div class="zone-subtext">Corte de horário & Expedição crítica</div>
+                  <div class="zone-drop-area" id="drop-fechamento_cpt">
+                    <!-- Operator Cards -->
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- External & Non-Active Side Panels -->
+            <div class="side-panels-column">
+              <!-- External Synergy Panel -->
+              <div class="panel-box panel-external-synergy" data-zone-id="external_synergy">
+                <div class="panel-title">
+                  <i data-lucide="external-link"></i>
+                  <span>SINERGIA EXTERNA</span>
+                  <span class="badge-count" id="count-ext-synergy">0</span>
+                </div>
+                <p class="panel-desc">Operadores alocados em sinergia externa</p>
+                <div class="zone-drop-area" id="drop-external_synergy" data-zone-id="external_synergy">
+                  <!-- External Synergy Cards -->
+                </div>
+              </div>
+
+              <!-- Off & Absent Panel -->
+              <div class="panel-box panel-inactive" data-zone-id="inactive">
+                <div class="panel-title">
+                  <i data-lucide="user-x"></i>
+                  <span>FOLGA / FALTA / ATESTADO</span>
+                  <span class="badge-count" id="count-inactive">0</span>
+                </div>
+                <p class="panel-desc">Indisponíveis na operação hoje</p>
+                <div class="zone-drop-area" id="drop-inactive" data-zone-id="inactive">
+                  <!-- Inactive Cards -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: MATRIZ DE ESCALA (TABELA COMPLETA) -->
+      <section id="tabTable" class="tab-content">
+        <div class="table-wrapper">
+          <div class="table-controls">
+            <h3><i data-lucide="users"></i> Lista Geral de Operadores da Escala</h3>
+            <div class="table-actions">
+              <button class="btn btn-outline btn-sm" id="btnFilterAll">Limpar Filtros</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table" id="operatorsTable">
+              <thead>
+                <tr>
+                  <th>Operador / RE</th>
+                  <th>Turma</th>
+                  <th>Horário de Janta</th>
+                  <th>Cargo</th>
+                  <th>Posto Atual (REWORK)</th>
+                  <th>Status Operacional</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="operatorsTableBody">
+                <!-- Dynamic Rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: Adicionar / Editar Operador -->
+  <div class="modal-overlay" id="modalOperator">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalOperatorTitle"><i data-lucide="user-plus"></i> Cadastrar Operador</h3>
+        <button class="modal-close" data-close="modalOperator">&times;</button>
+      </div>
+      <form id="formOperator" class="modal-body">
+        <input type="hidden" id="opId">
+        
+        <div class="form-row">
+          <div class="form-field">
+            <label for="opName">Nome Completo *</label>
+            <input type="text" id="opName" class="form-input" placeholder="Ex: Carlos Silva" required>
+          </div>
+          <div class="form-field">
+            <label for="opRE">RE / Matrícula *</label>
+            <input type="text" id="opRE" class="form-input" placeholder="Ex: RE8921" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="opTurma">Turma *</label>
+            <select id="opTurma" class="form-select" required>
+              <option value="AA">Turma AA</option>
+              <option value="AB">Turma AB</option>
+              <option value="AC">Turma AC</option>
+              <option value="AD">Turma AD</option>
+              <option value="B">Turma B</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="opJantar">Horário de Janta *</label>
+            <select id="opJantar" class="form-select" required>
+              <option value="18:30">18:30h (1ª Pausa)</option>
+              <option value="19:30">19:30h (2ª Pausa)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="opRole">Cargo / Função</label>
+            <select id="opRole" class="form-select">
+              <option value="Operador de Rework">Operador de Rework</option>
+              <option value="Conferente">Conferente</option>
+              <option value="Operador de Empilhadeira">Operador de Empilhadeira</option>
+              <option value="Líder Operacional">Líder Operacional</option>
+              <option value="Auxiliar de Logística">Auxiliar de Logística</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="opZone">Posto de Trabalho (Área REWORK)</label>
+            <select id="opZone" class="form-select">
+              <option value="buffer">BUFFER</option>
+              <option value="ilhas">ILHAS</option>
+              <option value="oportunidades">ILHA DAS OPORTUNIDADES</option>
+              <option value="atrelamento">ATRELAMENTO</option>
+              <option value="fechamento_aut">FECHAMENTO AUT</option>
+              <option value="fechamento_cpt">FECHAMENTO CPT</option>
+              <option value="dock">POOL DE APOIO / SEM POSTO</option>
+              <option value="external_synergy">SINERGIA EXTERNA</option>
+              <option value="inactive">FORA DE SERVIÇO (FOLGA/FALTA)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="opStatus">Status Operacional</label>
+            <select id="opStatus" class="form-select">
+              <option value="PRESENT">Presente / No Posto</option>
+              <option value="SYNERGY_EXT">Sinergia Externa</option>
+              <option value="OFF">Folga Escala</option>
+              <option value="ABSENT">Falta / Atestado</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="opAvatar">Estilo de Avatar</label>
+            <select id="opAvatar" class="form-select">
+              <option value="1">Avatar Masculino 1</option>
+              <option value="2">Avatar Feminino 1</option>
+              <option value="3">Avatar Masculino 2</option>
+              <option value="4">Avatar Feminino 2</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close="modalOperator">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Operador</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
