@@ -371,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
       bancada.ops.forEach(op => {
         cardsContainer.appendChild(createOperatorCardEl(op));
       });
-
+      pairBox.dataset.opids = JSON.stringify(bancada.ops.map(o => o.id));
       containerEl.appendChild(pairBox);
     });
   }
@@ -493,8 +493,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAll();
   }
 
-  // Move operator to a zone or pair
-  function moveOperatorToZone(opId, targetZoneId) {
+  // Move operator to a zone or specific bancada
+  function moveOperatorToZone(opId, targetZoneId, targetBancadaOpIds = null) {
     const op = operators.find(o => o.id === opId);
     if (!op) return;
 
@@ -523,10 +523,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Move op to end of array so it appears at the end of that zone
+    // Reposition operator in main array
     const idx = operators.indexOf(op);
-    if (idx !== -1) {
-      operators.splice(idx, 1);
+    if (idx !== -1) operators.splice(idx, 1);
+
+    if (targetBancadaOpIds && targetBancadaOpIds.length > 0) {
+      const lastOpId = targetBancadaOpIds[targetBancadaOpIds.length - 1];
+      const targetOp = operators.find(o => o.id === lastOpId);
+      if (targetOp) {
+        const targetIdx = operators.indexOf(targetOp);
+        operators.splice(targetIdx + 1, 0, op);
+      } else {
+        operators.push(op);
+      }
+    } else {
       operators.push(op);
     }
 
@@ -559,7 +569,12 @@ document.addEventListener('DOMContentLoaded', () => {
         zone.classList.remove('drag-over');
         if (!draggedOpId) return;
 
-        moveOperatorToZone(draggedOpId, zoneId);
+        let targetBancadaOpIds = null;
+        if (zone.classList.contains('ilha-pair-box') && zone.dataset.opids) {
+          try { targetBancadaOpIds = JSON.parse(zone.dataset.opids); } catch (err) {}
+        }
+
+        moveOperatorToZone(draggedOpId, zoneId, targetBancadaOpIds);
       });
     });
   }

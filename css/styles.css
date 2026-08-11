@@ -497,17 +497,24 @@ body {
   }
 }
 
-/* 2D Spatial Grid matching the user diagram:
-   Row 1: BUFFER | ILHAS
-   Row 2: ILHA DAS OPORTUNIDADES | ATRELAMENTO
-   Row 3: POOL DOCK | FECHAMENTO AUT & CPT SPLIT
-*/
 .rework-layout-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto auto;
   gap: 1rem;
 }
+
+/* 2D Spatial Grid matching the exact user diagram:
+   Left Column:  BUFFER (1) -> ILHA DA PROSPERIDADE (2) -> POOL DE APOIO (3)
+   Right Column: ILHAS (1)  -> ATRELAMENTO (2)          -> FECHAMENTO AUT & CPT (3)
+*/
+.zone-buffer { grid-column: 1; grid-row: 1; }
+.zone-oportunidades { grid-column: 1; grid-row: 2; min-height: 120px; }
+.zone-dock { grid-column: 1; grid-row: 3; }
+
+.zone-ilhas { grid-column: 2; grid-row: 1; }
+.zone-atrelamento { grid-column: 2; grid-row: 2; }
+.bottom-split-container { grid-column: 2; grid-row: 3; }
+
 
 .zone-card {
   background-color: var(--bg-card);

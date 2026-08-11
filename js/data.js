@@ -12,7 +12,7 @@ const REWORK_ZONES = {
   buffer_guardioes: { id: 'buffer_guardioes', name: 'GUARDIÕES DO BUFFER', parent: 'buffer', target: 10, desc: 'Gestão e controle do estoque intermediário' },
   buffer_saida: { id: 'buffer_saida', name: 'BUFFER DE SAÍDA', parent: 'buffer', target: 10, desc: 'Preparação e liberação de paletes' },
   ilhas: { id: 'ilhas', name: 'ILHAS', target: 25, desc: 'Bancadas de reprocessamento em Duplas da mesma Turma' },
-  oportunidades: { id: 'oportunidades', name: 'ILHA DAS OPORTUNIDADES', target: 15, desc: 'Tratamento de itens especiais & Salvados' },
+  oportunidades: { id: 'oportunidades', name: 'ILHA DA PROSPERIDADE', target: 15, desc: 'Tratamento de itens especiais & Salvados' },
   atrelamento: { id: 'atrelamento', name: 'ATRELAMENTO', target: 20, desc: 'Vinculação de etiquetas e SKUs' },
   fechamento_aut: { id: 'fechamento_aut', name: 'FECHAMENTO AUT', target: 10, desc: 'Empacotamento & Paletização Aut.' },
   fechamento_cpt: { id: 'fechamento_cpt', name: 'FECHAMENTO CPT', target: 10, desc: 'Corte de horário & Expedição crítica' },
