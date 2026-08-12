@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OpSinergia REWORK - Main Application Controller (Padlock Toggle & Flexible Fixed Groups)
+   OpSinergia REWORK - Main Application Controller (Dynamic Multi-Person Bancadas)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeGroupOps.forEach(o => {
               o.zone = 'ilhas';
               o.lastWorkingZone = 'ilhas';
+              o.bancadaId = g.id;
             });
           }
         }
@@ -231,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Render Ilhas with Padlock Toggle & Flexible Group Sizes
+    // Render Ilhas with Padlock Toggle & Multi-Person Bancadas
     renderIlhasBancadas(ilhasOperators, zoneContainers.ilhas);
 
     // Update Counter Badges
@@ -254,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDragAndDrop();
   }
 
-  // Render Ilhas Bancadas with Padlock Toggle 🔒 / 🔓 and Flexible Group Sizes (2, 3, 4+ ops)
+  // Render Ilhas Bancadas with Padlock Toggle 🔒 / 🔓 and Multi-Person Support (2, 3, 4, 5+ ops per Bancada)
   function renderIlhasBancadas(opsList, containerEl) {
     if (!containerEl) return;
     containerEl.innerHTML = '';
@@ -264,40 +265,57 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Group operators into Bancadas (by Fixed Group if locked, or by 2s/3s)
-    const bancadas = [];
-    const processedOpIds = new Set();
+    // Group operators into Bancadas
+    const bancadaMap = new Map(); // key: bancadaKey, value: { isFixedGroup, groupId, ops: [] }
 
     // 1. Process active Fixed Groups first
     fixedGroups.forEach(group => {
       const groupOps = opsList.filter(o => group.opIds.includes(o.id));
       if (groupOps.length > 0) {
-        bancadas.push({
+        bancadaMap.set(group.id, {
           isFixedGroup: true,
           groupId: group.id,
           ops: groupOps
         });
-        groupOps.forEach(o => processedOpIds.add(o.id));
       }
     });
 
-    // 2. Group remaining unlinked operators into bancadas of 2
-    const unlinkedOps = opsList.filter(o => !processedOpIds.has(o.id));
-    for (let i = 0; i < unlinkedOps.length; i += 2) {
-      const pair = unlinkedOps.slice(i, i + 2);
-      bancadas.push({
-        isFixedGroup: false,
-        groupId: null,
-        ops: pair
-      });
-    }
+    // 2. Process unlinked operators by their op.bancadaId
+    const unlinkedOps = opsList.filter(o => !getGroupForOperator(o.id, fixedGroups));
+
+    unlinkedOps.forEach(op => {
+      let bKey = op.bancadaId;
+
+      // If operator has no bancadaId or refers to an old group, find an active unlinked bancada or assign a default
+      if (!bKey || bKey.startsWith('group-')) {
+        const firstOpenUnlinked = Array.from(bancadaMap.entries()).find(([k, v]) => !v.isFixedGroup);
+        if (firstOpenUnlinked) {
+          bKey = firstOpenUnlinked[0];
+        } else {
+          bKey = `bancada-flex-1`;
+        }
+      }
+
+      op.bancadaId = bKey;
+
+      if (!bancadaMap.has(bKey)) {
+        bancadaMap.set(bKey, {
+          isFixedGroup: false,
+          groupId: null,
+          ops: []
+        });
+      }
+      bancadaMap.get(bKey).ops.push(op);
+    });
 
     // Render each Bancada Box
-    bancadas.forEach((bancada, idx) => {
-      const bancadaIndex = idx + 1;
+    let bCounter = 1;
+    bancadaMap.forEach((bancada, bKey) => {
+      const bancadaIndex = bCounter++;
       const pairBox = document.createElement('div');
       pairBox.className = 'ilha-pair-box';
       pairBox.dataset.zoneId = 'ilhas';
+      pairBox.dataset.bancadaId = bKey;
       pairBox.dataset.bancadaIdx = bancadaIndex;
 
       if (bancada.isFixedGroup) {
@@ -307,17 +325,18 @@ document.addEventListener('DOMContentLoaded', () => {
       let statusBadgeHtml = '';
       let lockButtonHtml = '';
 
+      const opIdsJson = JSON.stringify(bancada.ops.map(o => o.id));
+
       if (bancada.isFixedGroup) {
         statusBadgeHtml = `<span class="badge-group-locked"><i data-lucide="lock"></i> Fixado (${bancada.ops.length})</span>`;
         lockButtonHtml = `
-          <button class="btn-lock-toggle locked" title="Bancada Fixada 🔒 (Clique para abrir/desvincular)" data-action="unlink" data-opids='${JSON.stringify(bancada.ops.map(o => o.id))}'>
+          <button class="btn-lock-toggle locked" title="Bancada Fixada 🔒 (Clique para abrir/desvincular)" data-action="unlink" data-bkey="${bKey}" data-opids='${opIdsJson}'>
             <i data-lucide="lock"></i>
           </button>
         `;
       } else {
-        const opIdsJson = JSON.stringify(bancada.ops.map(o => o.id));
         lockButtonHtml = `
-          <button class="btn-lock-toggle unlocked" title="Trancar Bancada 🔓 (Fixar estes colaboradores juntos)" data-action="link" data-opids='${opIdsJson}'>
+          <button class="btn-lock-toggle unlocked" title="Trancar Bancada 🔓 (Fixar estes ${bancada.ops.length} colaboradores juntos)" data-action="link" data-bkey="${bKey}" data-opids='${opIdsJson}'>
             <i data-lucide="unlock"></i>
           </button>
         `;
@@ -327,10 +346,10 @@ document.addEventListener('DOMContentLoaded', () => {
           const allSameTurma = bancada.ops.every(o => o.turma === firstTurma);
           if (allSameTurma) {
             pairBox.classList.add('pair-valid');
-            statusBadgeHtml = `<span class="pair-status-match">✓ Turma ${firstTurma}</span>`;
+            statusBadgeHtml = `<span class="pair-status-match">✓ Turma ${firstTurma} (${bancada.ops.length} ops)</span>`;
           } else {
             pairBox.classList.add('pair-mismatch');
-            const turmasStr = bancada.ops.map(o => o.turma).join(' / ');
+            const turmasStr = Array.from(new Set(bancada.ops.map(o => o.turma))).join('/');
             statusBadgeHtml = `<span class="pair-status-mismatch" title="Atenção: Turmas diferentes!">⚠️ Turmas (${turmasStr})</span>`;
           }
         } else if (bancada.ops.length === 1) {
@@ -359,10 +378,22 @@ document.addEventListener('DOMContentLoaded', () => {
           const targetOpIds = JSON.parse(btnLock.dataset.opids || '[]');
 
           if (action === 'link' && targetOpIds.length > 0) {
-            linkGroupInStorage(targetOpIds);
+            const newGroupList = linkGroupInStorage(targetOpIds);
+            const createdGroup = newGroupList[newGroupList.length - 1];
+            if (createdGroup) {
+              targetOpIds.forEach(id => {
+                const o = operators.find(op => op.id === id);
+                if (o) o.bancadaId = createdGroup.id;
+              });
+            }
           } else if (action === 'unlink' && targetOpIds.length > 0) {
             unlinkGroupInStorage(targetOpIds[0]);
+            targetOpIds.forEach(id => {
+              const o = operators.find(op => op.id === id);
+              if (o) o.bancadaId = null;
+            });
           }
+          saveOperatorsToStorage(operators);
           renderAll();
         });
       }
@@ -371,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
       bancada.ops.forEach(op => {
         cardsContainer.appendChild(createOperatorCardEl(op));
       });
-      pairBox.dataset.opids = JSON.stringify(bancada.ops.map(o => o.id));
+      pairBox.dataset.opids = opIdsJson;
       containerEl.appendChild(pairBox);
     });
   }
@@ -398,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fixed Group indicator badge on card if locked
     const groupRecord = getGroupForOperator(op.id, fixedGroups);
-    const fixedIconHtml = groupRecord ? `<span title="Pertence a uma Bancada Fixa 🔒" style="color:#d8b4fe; font-size:0.65rem;">🔒</span>` : '';
+    const fixedIconHtml = groupRecord ? `<span title="Bancada Fixada 🔒" style="color:#d8b4fe; font-size:0.65rem;">🔒</span>` : '';
 
     card.innerHTML = `
       <span class="op-status-dot"></span>
@@ -469,8 +500,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetOp = operators.find(o => o.id === targetOpId);
     if (!sourceOp || !targetOp) return;
 
-    // Save working zones
+    // Save working zones and bancada IDs
     sourceOp.zone = targetOp.zone;
+    if (targetOp.zone === 'ilhas') {
+      sourceOp.bancadaId = targetOp.bancadaId;
+    }
+
     if (targetOp.zone !== 'inactive' && targetOp.zone !== 'external_synergy') {
       sourceOp.lastWorkingZone = targetOp.zone;
       sourceOp.status = 'PRESENT';
@@ -494,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Move operator to a zone or specific bancada
-  function moveOperatorToZone(opId, targetZoneId, targetBancadaOpIds = null) {
+  function moveOperatorToZone(opId, targetZoneId, targetBancadaId = null) {
     const op = operators.find(o => o.id === opId);
     if (!op) return;
 
@@ -509,8 +544,16 @@ document.addEventListener('DOMContentLoaded', () => {
       op.lastWorkingZone = targetZoneId; // Save active post!
     }
 
-    // If operator has a Fixed Group, and moving to Ilhas, move group partners too!
     if (targetZoneId === 'ilhas') {
+      if (targetBancadaId) {
+        op.bancadaId = targetBancadaId;
+      } else {
+        // If no specific bancada target, assign to existing or new
+        const activeBancadaIds = Array.from(document.querySelectorAll('.ilha-pair-box')).map(el => el.dataset.bancadaId);
+        op.bancadaId = activeBancadaIds.length > 0 ? activeBancadaIds[0] : `bancada-${Date.now()}`;
+      }
+
+      // If operator has a Fixed Group, move group partners too!
       const groupRec = getGroupForOperator(op.id, fixedGroups);
       if (groupRec) {
         groupRec.opIds.forEach(id => {
@@ -518,25 +561,18 @@ document.addEventListener('DOMContentLoaded', () => {
           if (partnerOp && partnerOp.status === 'PRESENT') {
             partnerOp.zone = 'ilhas';
             partnerOp.lastWorkingZone = 'ilhas';
+            partnerOp.bancadaId = groupRec.id;
           }
         });
       }
+    } else {
+      op.bancadaId = null;
     }
 
-    // Reposition operator in main array
+    // Move op to end of array
     const idx = operators.indexOf(op);
-    if (idx !== -1) operators.splice(idx, 1);
-
-    if (targetBancadaOpIds && targetBancadaOpIds.length > 0) {
-      const lastOpId = targetBancadaOpIds[targetBancadaOpIds.length - 1];
-      const targetOp = operators.find(o => o.id === lastOpId);
-      if (targetOp) {
-        const targetIdx = operators.indexOf(targetOp);
-        operators.splice(targetIdx + 1, 0, op);
-      } else {
-        operators.push(op);
-      }
-    } else {
+    if (idx !== -1) {
+      operators.splice(idx, 1);
       operators.push(op);
     }
 
@@ -569,12 +605,12 @@ document.addEventListener('DOMContentLoaded', () => {
         zone.classList.remove('drag-over');
         if (!draggedOpId) return;
 
-        let targetBancadaOpIds = null;
-        if (zone.classList.contains('ilha-pair-box') && zone.dataset.opids) {
-          try { targetBancadaOpIds = JSON.parse(zone.dataset.opids); } catch (err) {}
+        let targetBancadaId = null;
+        if (zone.classList.contains('ilha-pair-box') && zone.dataset.bancadaId) {
+          targetBancadaId = zone.dataset.bancadaId;
         }
 
-        moveOperatorToZone(draggedOpId, zoneId, targetBancadaOpIds);
+        moveOperatorToZone(draggedOpId, zoneId, targetBancadaId);
       });
     });
   }
