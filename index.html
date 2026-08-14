@@ -75,18 +75,9 @@
       <div class="kpi-card highlight">
         <div class="kpi-icon icon-blue"><i data-lucide="users"></i></div>
         <div class="kpi-content">
-          <span class="kpi-label">Escalados Hoje</span>
+          <span class="kpi-label">Pessoas Escaladas</span>
           <span class="kpi-value" id="kpiTotalScaled">0</span>
-          <span class="kpi-sub" id="kpiTotalScaledSub">Base do REWORK</span>
-        </div>
-      </div>
-
-      <div class="kpi-card">
-        <div class="kpi-icon icon-green"><i data-lucide="user-check"></i></div>
-        <div class="kpi-content">
-          <span class="kpi-label">Presentes no Rework</span>
-          <span class="kpi-value" id="kpiPresent">0</span>
-          <span class="kpi-sub" id="kpiPresentSub">Alocados nos Postos</span>
+          <span class="kpi-sub" id="kpiTotalScaledSub">Total da Escala</span>
         </div>
       </div>
 
@@ -95,39 +86,39 @@
         <div class="kpi-content">
           <span class="kpi-label">Sinergia Externa</span>
           <span class="kpi-value" id="kpiExternalSynergy">0</span>
-          <span class="kpi-sub">Emprestados para Fora</span>
+          <span class="kpi-sub">Emprestados</span>
         </div>
       </div>
 
       <div class="kpi-card">
         <div class="kpi-icon icon-gray"><i data-lucide="calendar-off"></i></div>
         <div class="kpi-content">
-          <span class="kpi-label">Folga / Falta</span>
+          <span class="kpi-label">Folgas / Ausentes</span>
           <span class="kpi-value" id="kpiOffAbsent">0</span>
-          <span class="kpi-sub" id="kpiOffAbsentSub">0 Folgas | 0 Faltas</span>
+          <span class="kpi-sub" id="kpiOffAbsentSub">0 Folgas</span>
         </div>
       </div>
 
       <div class="kpi-card">
         <div class="kpi-icon icon-purple"><i data-lucide="utensils"></i></div>
         <div class="kpi-content">
-          <span class="kpi-label">Janta 18:30h</span>
+          <span class="kpi-label">Janta 18:30</span>
           <span class="kpi-value" id="kpiJantar18">0</span>
-          <span class="kpi-sub">1ª Turma de Pausa</span>
+          <span class="kpi-sub">1ª Turma</span>
         </div>
       </div>
 
       <div class="kpi-card">
         <div class="kpi-icon icon-cyan"><i data-lucide="utensils"></i></div>
         <div class="kpi-content">
-          <span class="kpi-label">Janta 19:30h</span>
+          <span class="kpi-label">Janta 19:30</span>
           <span class="kpi-value" id="kpiJantar19">0</span>
-          <span class="kpi-sub">2ª Turma de Pausa</span>
+          <span class="kpi-sub">2ª Turma</span>
         </div>
       </div>
     </section>
 
-    <!-- Main Navigation Tabs Bar (Clean 2 Tabs) -->
+    <!-- Main Navigation Tabs Bar -->
     <nav class="view-tabs-bar">
       <div class="tabs">
         <button class="tab-btn active" data-tab="tabMap">
@@ -152,251 +143,285 @@
     <!-- Main Content Area -->
     <main class="main-content">
       
-      <!-- TAB 1: PLANTA BAIXA REAL REWORK (2D Interactive Grid) -->
+      <!-- TAB 1: PLANTA BAIXA REAL REWORK (2D Interactive Grid com Posições Identificáveis) -->
       <section id="tabMap" class="tab-content active">
         <div class="floor-plan-wrapper">
           <div class="floor-plan-header">
             <div class="floor-title">
               <i data-lucide="map-pin"></i>
-              <h2>Layout Físico do Setor REWORK</h2>
-              <span class="floor-instruction">Dica: Arraste os cartões dos operadores entre os blocos para alocar.</span>
+              <h2>Mapa de Ocupação Físico do Setor REWORK</h2>
+              <span class="floor-instruction">Dica: Arraste colaboradores diretamente para os códigos de posição (B01, I01, A01, F01...).</span>
             </div>
             <div class="floor-actions">
-              <span class="legend-item"><span class="dot dot-active"></span> Ativo no Posto</span>
-              <span class="legend-item"><span class="dot dot-synergy-ext"></span> Sinergia Externa</span>
-              <span class="legend-item"><span class="dot dot-leader"></span> Líder / Suporte</span>
+              <span class="legend-item"><span class="dot dot-active"></span> Ocupada 🟢</span>
+              <span class="legend-item"><span class="dot dot-synergy-ext"></span> Sinergia</span>
+              <span class="legend-item"><span class="dot dot-leader"></span> Mesa Ops</span>
             </div>
           </div>
 
           <div class="floor-grid-container">
-            <!-- 2D Spatial Grid matching the user's diagram -->
-            <div class="rework-layout-grid">
-              
-              <!-- Top Left: BUFFER (Dividido em Guardiões do Buffer e Buffer de Saída) -->
-              <div class="zone-card zone-buffer">
-                <div class="zone-header">
-                  <div class="zone-info">
-                    <span class="zone-badge">1</span>
-                    <div>
-                      <h3>BUFFER</h3>
-                      <div class="zone-ops-bar">
-                        <i data-lucide="shield-check"></i>
-                        <span class="ops-label">Ops:</span>
-                        <select class="ops-select" data-sector="buffer" id="ops-select-buffer">
-                          <!-- Filled dynamically by JS -->
-                        </select>
-                      </div>
-                    </div>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 BLUEPRINT MAP — Planta Baixa Fiel ao Layout Real do REWORK
+                 ═══════════════════════════════════════════════════════════════ -->
+            <div class="blueprint-map">
+
+              <!-- ─── CABEÇALHO SUPERIOR: SAÍDA DAS CORES | ENTRADA DE BUFFER ────────── -->
+              <div class="bp-top-header-row">
+                <div class="bp-hdr-box bp-hdr-left">SAIDA DAS CORES</div>
+                <div class="bp-hdr-divider"></div>
+                <div class="bp-hdr-box bp-hdr-right">ENTRADA DE BUFFER</div>
+              </div>
+
+              <!-- ─── SEÇÃO SUPERIOR: FECHAMENTO AUT (Esq) & BUFFER (Dir) ─────────── -->
+              <div class="bp-section-top">
+
+                <!-- ── Esquerda: FECHAMENTO AUT ── -->
+                <div class="bp-top-left-block">
+                  <div class="bp-vert-strip-box">
+                    <span class="bp-vert-text">POSIÇÕES DE SAÍDA</span>
                   </div>
-                  <div class="zone-counter">
-                    <span class="count-value" id="count-buffer">0</span>
+                  <div class="bp-vert-strip-label">
+                    <span class="bp-vert-text">FECHAMENTO AUT</span>
+                  </div>
+                  <div class="bp-fech-aut-inner">
+                    <div class="bp-rack-box">RUA DE CPTS</div>
+                    <div class="bp-rack-box">RUA DE CPTS</div>
+                    <!-- Slot F01 -->
+                    <div class="bp-slot-wrapper">
+                      <div class="bp-slot-container" id="slot-F01" data-pos-code="F01" data-zone-id="fechamento_aut" data-role="REP 1"></div>
+                    </div>
+                    <div class="bp-rack-box">RUA DE CPTS</div>
+                    <!-- Slot F02 -->
+                    <div class="bp-slot-wrapper">
+                      <div class="bp-slot-container" id="slot-F02" data-pos-code="F02" data-zone-id="fechamento_aut" data-role="REP 1"></div>
+                    </div>
+                    <div class="bp-rack-box">RUA DE CPTS</div>
                   </div>
                 </div>
 
-                <!-- Sub-divisões do Buffer -->
-                <div class="buffer-subdivisions">
-                  <div class="buffer-sub-box" data-zone-id="buffer_guardioes">
-                    <div class="buffer-sub-header">
-                      <span>🛡️ Guardiões do Buffer</span>
-                      <span class="count-sub" id="count-buffer_guardioes">0</span>
+                <!-- ── Divisória Vertical Tracejada Central ── -->
+                <div class="bp-v-dashed-divider"></div>
+
+                <!-- ── Direita: BUFFER ── -->
+                <div class="bp-top-right-block">
+                  <div class="bp-buffer-title-bar">
+                    <span class="bp-buffer-title">BUFFER</span>
+                    <div class="bp-ops-inline">
+                      <span>Ops:</span>
+                      <select class="ops-select" data-sector="buffer" id="ops-select-buffer"></select>
                     </div>
-                    <div class="zone-drop-area sub-drop-area" id="drop-buffer_guardioes">
-                      <!-- Operator Cards -->
-                    </div>
+                    <span class="bp-zone-count" id="count-buffer">0</span>
                   </div>
 
-                  <div class="buffer-sub-box" data-zone-id="buffer_saida">
-                    <div class="buffer-sub-header">
-                      <span>📦 Buffer de Saída</span>
-                      <span class="count-sub" id="count-buffer_saida">0</span>
+                  <div class="bp-buffer-layout">
+                    <!-- 1. Rack Prosperidade Esq -->
+                    <div class="bp-tall-rack-box">
+                      <span class="bp-tall-rack-text">ILHAS DA PROSPERIDADE</span>
                     </div>
-                    <div class="zone-drop-area sub-drop-area" id="drop-buffer_saida">
-                      <!-- Operator Cards -->
+
+                    <!-- 2. Lane de 5 Posições da Prosperidade (P01 a P05) -->
+                    <div class="bp-lane-col bp-lane-prosp">
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-P01" data-pos-code="P01" data-zone-id="oportunidades" data-role="REP 1"></div></div>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-P02" data-pos-code="P02" data-zone-id="oportunidades" data-role="REP 1"></div></div>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-P03" data-pos-code="P03" data-zone-id="oportunidades" data-role="REP 1"></div></div>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-P04" data-pos-code="P04" data-zone-id="oportunidades" data-role="REP 1"></div></div>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-P05" data-pos-code="P05" data-zone-id="oportunidades" data-role="REP 1"></div></div>
                     </div>
+
+                    <!-- 3. Rack Prosperidade Dir -->
+                    <div class="bp-tall-rack-box">
+                      <span class="bp-tall-rack-text">ILHAS DA PROSPERIDADE</span>
+                    </div>
+
+                    <!-- 4. Lane Atrelamento Buffer (B07, B08) -->
+                    <div class="bp-lane-col bp-lane-atrel-buf">
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B07" data-pos-code="B07" data-zone-id="buffer_saida" data-role="Atrelamento Buffer"></div></div>
+                      <span class="bp-lane-subtext">ATRELAMENTO BUFFER</span>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B08" data-pos-code="B08" data-zone-id="buffer_saida" data-role="Atrelamento Buffer"></div></div>
+                      <span class="bp-lane-subtext">ATRELAMENTO BUFFER</span>
+                    </div>
+
+                    <!-- 5. Rack 49 Posições de Pallets -->
+                    <div class="bp-tall-rack-box">
+                      <span class="bp-tall-rack-text">49 POSIÇÕES DE PALLETS</span>
+                    </div>
+
+                    <!-- 6. Lane Buffer de Saída 1 (B03, B04) -->
+                    <div class="bp-lane-col bp-lane-buf-saida">
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B03" data-pos-code="B03" data-zone-id="buffer_saida" data-role="Buffer de Saída"></div></div>
+                      <span class="bp-lane-subtext">BUFFER DE SAIDA</span>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B04" data-pos-code="B04" data-zone-id="buffer_saida" data-role="Buffer de Saída"></div></div>
+                      <span class="bp-lane-subtext">BUFFER DE SAIDA</span>
+                    </div>
+
+                    <!-- 7. Rack 49 Posições de Pallets -->
+                    <div class="bp-tall-rack-box">
+                      <span class="bp-tall-rack-text">49 POSIÇÕES DE PALLETS</span>
+                    </div>
+
+                    <!-- 8. Lane Buffer de Saída 2 (B05, B06) -->
+                    <div class="bp-lane-col bp-lane-buf-saida">
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B05" data-pos-code="B05" data-zone-id="buffer_saida" data-role="Buffer de Saída"></div></div>
+                      <span class="bp-lane-subtext">BUFFER DE SAIDA</span>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B06" data-pos-code="B06" data-zone-id="buffer_saida" data-role="Buffer de Saída"></div></div>
+                      <span class="bp-lane-subtext">BUFFER DE SAIDA</span>
+                    </div>
+
+                    <!-- 9. Rack 49 Posições de Pallets com CPT Vermelho no rodapé -->
+                    <div class="bp-tall-rack-box bp-rack-cpt-highlight">
+                      <span class="bp-tall-rack-text">49 POSIÇÕES DE PALLETS</span>
+                      <div class="bp-cpt-red-box">CPT</div>
+                    </div>
+
+                    <!-- 10. Lane Guardião do Buffer (B01, B02) -->
+                    <div class="bp-lane-col bp-lane-guardioes">
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B01" data-pos-code="B01" data-zone-id="buffer_guardioes" data-role="Guardião do Buffer"></div></div>
+                      <span class="bp-lane-subtext">GUARDIÃO DO BUFFER</span>
+                      <div class="bp-slot-wrapper"><div class="bp-slot-container" id="slot-B02" data-pos-code="B02" data-zone-id="buffer_guardioes" data-role="Guardião do Buffer"></div></div>
+                      <span class="bp-lane-subtext">GUARDIÃO DO BUFFER</span>
+                    </div>
+
                   </div>
                 </div>
               </div>
 
-              <!-- Top Right: ILHAS (Bancadas em Dupla) -->
-              <div class="zone-card zone-ilhas" data-zone-id="ilhas">
-                <div class="zone-header">
-                  <div class="zone-info">
-                    <span class="zone-badge">2</span>
-                    <div>
-                      <h3>ILHAS</h3>
-                      <div class="zone-ops-bar">
-                        <i data-lucide="shield-check"></i>
-                        <span class="ops-label">Ops:</span>
-                        <select class="ops-select" data-sector="ilhas" id="ops-select-ilhas">
-                          <!-- Filled dynamically by JS -->
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="zone-counter">
-                    <span class="count-value" id="count-ilhas">0</span>
+              <!-- ─── DIVISÓRIA HORIZONTAL TRACEJADA COM MESAS OPS ──────────────── -->
+              <div class="bp-middle-divider-row">
+                <div class="bp-middle-half bp-middle-left">
+                  <div class="bp-mesa-box bp-mesa-2">
+                    <div class="bp-mesa-header">Mesa ops 2</div>
+                    <div class="bp-slot-container bp-mesa-slot" id="slot-O01" data-pos-code="O01" data-zone-id="ops" data-role="Ops II"></div>
                   </div>
                 </div>
-                <div class="zone-subtext">Duplas de trabalho (Devem ser da mesma Turma)</div>
-                <div class="zone-drop-area ilhas-grid-area" id="drop-ilhas">
-                  <!-- Duplas Rendered Dynamically -->
+                <div class="bp-v-dashed-divider-node"></div>
+                <div class="bp-middle-half bp-middle-right">
+                  <div class="bp-mesa-box bp-mesa-3">
+                    <div class="bp-mesa-header">Mesa ops 3</div>
+                    <div class="bp-slot-container bp-mesa-slot" id="slot-O02" data-pos-code="O02" data-zone-id="ops" data-role="Ops III"></div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Middle Left: ILHA DA PROSPERIDADE -->
-              <div class="zone-card zone-oportunidades" data-zone-id="oportunidades">
-                <div class="zone-header">
-                  <div class="zone-info">
-                    <span class="zone-badge">3</span>
-                    <div>
-                      <h3>ILHA DA PROSPERIDADE</h3>
-                      <div class="zone-ops-bar">
-                        <i data-lucide="shield-check"></i>
-                        <span class="ops-label">Ops:</span>
-                        <select class="ops-select" data-sector="oportunidades" id="ops-select-oportunidades">
-                          <!-- Filled dynamically by JS -->
-                        </select>
+              <!-- ─── SEÇÃO INFERIOR: ATRELAMENTO/FECHAMENTO CPT (Esq) & ILHAS (Dir) ─ -->
+              <div class="bp-section-bottom">
+
+                <!-- ── Esquerda: ATRELAMENTO & FECHAMENTO CPT ── -->
+                <div class="bp-bottom-left-block">
+                  <!-- ATRELAMENTO -->
+                  <div class="bp-atrelamento-sec" id="sec-atrelamento" data-zone-id="atrelamento">
+                    <div class="bp-atrel-header-row">
+                      <div class="bp-sub-hdr">ATRELAMENTO</div>
+                      <div class="bp-ops-inline">
+                        <span>Ops:</span>
+                        <select class="ops-select" data-sector="atrelamento" id="ops-select-atrelamento"></select>
+                      </div>
+                      <span class="bp-zone-count" id="count-atrelamento">0 reps</span>
+                    </div>
+
+                    <!-- Rua 1 de CPTs -->
+                    <div class="bp-atrel-rua-block" data-rua="1" data-zone-id="atrelamento" title="Rua 1 de Atrelamento - Arraste operadores para cá">
+                      <div class="bp-rack-box">RUA 1 DE CPTS</div>
+                      <div class="bp-atrel-slots-row" id="atrel-rua-1-slots">
+                        <div class="bp-slot-container" id="slot-A01" data-pos-code="A01" data-zone-id="atrelamento" data-role="REP 1"></div>
+                        <div class="bp-slot-container" id="slot-A02" data-pos-code="A02" data-zone-id="atrelamento" data-role="REP 1"></div>
                       </div>
                     </div>
+
+                    <!-- Rua 2 de CPTs -->
+                    <div class="bp-atrel-rua-block" data-rua="2" data-zone-id="atrelamento" title="Rua 2 de Atrelamento - Arraste operadores para cá">
+                      <div class="bp-rack-box">RUA 2 DE CPTS</div>
+                      <div class="bp-atrel-slots-row" id="atrel-rua-2-slots">
+                        <div class="bp-slot-container" id="slot-A03" data-pos-code="A03" data-zone-id="atrelamento" data-role="REP 1"></div>
+                        <div class="bp-slot-container" id="slot-A04" data-pos-code="A04" data-zone-id="atrelamento" data-role="REP 1"></div>
+                      </div>
+                    </div>
+
+                    <!-- Botão/Alvo de Adicionar REP ao Atrelamento -->
+                    <div class="bp-atrel-add-target" id="btn-add-atrelamento" title="Clique para alocar do pool ou arraste um operador para adicionar ao Atrelamento">
+                      <span>+ Adicionar REP ao Atrelamento</span>
+                    </div>
                   </div>
-                  <div class="zone-counter">
-                    <span class="count-value" id="count-oportunidades">0</span>
+
+                  <!-- FECHAMENTO CPT -->
+                  <div class="bp-fech-cpt-sec">
+                    <div class="bp-vert-strip-box">
+                      <span class="bp-vert-text">POSIÇÕES DE SAÍDA</span>
+                    </div>
+                    <div class="bp-vert-strip-label">
+                      <span class="bp-vert-text">FECHAMENTO CPT</span>
+                    </div>
+                    <div class="bp-fech-cpt-inner">
+                      <div class="bp-rack-box">RUA DE CPTS</div>
+                      <div class="bp-cpt-slots-row">
+                        <div class="bp-slot-container" id="slot-F04" data-pos-code="F04" data-zone-id="fechamento_cpt" data-role="REP 1"></div>
+                        <div class="bp-slot-container" id="slot-F05" data-pos-code="F05" data-zone-id="fechamento_cpt" data-role="REP 1"></div>
+                      </div>
+                      <div class="bp-rack-box">RUA DE CPTS</div>
+                      <div class="bp-rack-box">RUA DE CPTS</div>
+                      <div class="bp-cpt-slots-row">
+                        <div class="bp-slot-container" id="slot-F06" data-pos-code="F06" data-zone-id="fechamento_cpt" data-role="REP 1"></div>
+                        <div class="bp-slot-container" id="slot-F07" data-pos-code="F07" data-zone-id="fechamento_cpt" data-role="REP 1"></div>
+                      </div>
+                      <div class="bp-rack-box">RUA DE CPTS</div>
+                    </div>
                   </div>
                 </div>
-                <div class="zone-subtext">Tratamento de itens especiais & Salvados</div>
-                <div class="zone-drop-area" id="drop-oportunidades">
-                  <!-- Operator Cards -->
+
+                <!-- ── Divisória Vertical Tracejada ── -->
+                <div class="bp-v-dashed-divider"></div>
+
+                <!-- ── Direita: ILHAS (4 Colunas x 4 Linhas = 16 Bancadas) ── -->
+                <div class="bp-bottom-right-block">
+                  <div class="bp-ilhas-header-bar">
+                    <div class="bp-ilhas-title-group">
+                      <span class="bp-ilhas-title">ILHAS</span>
+                      <span class="bp-ilhas-sub">16 Bancadas (Suporte a duplas e múltiplos operadores)</span>
+                    </div>
+                    <div class="bp-ops-inline">
+                      <span>Ops:</span>
+                      <select class="ops-select" data-sector="ilhas" id="ops-select-ilhas"></select>
+                    </div>
+                    <span class="bp-zone-count" id="count-ilhas">0</span>
+                  </div>
+
+                  <div class="bp-ilhas-4x4-grid" id="ilhasGridContainer">
+                    <!-- Rendered dynamically by JS: 16 Bancadas (B1 to B16) -->
+                  </div>
                 </div>
+
               </div>
 
-              <!-- Middle Right: ATRELAMENTO -->
-              <div class="zone-card zone-atrelamento" data-zone-id="atrelamento">
-                <div class="zone-header">
-                  <div class="zone-info">
-                    <span class="zone-badge">4</span>
-                    <div>
-                      <h3>ATRELAMENTO</h3>
-                      <div class="zone-ops-bar">
-                        <i data-lucide="shield-check"></i>
-                        <span class="ops-label">Ops:</span>
-                        <select class="ops-select" data-sector="atrelamento" id="ops-select-atrelamento">
-                          <!-- Filled dynamically by JS -->
-                        </select>
-                      </div>
-                    </div>
+              <!-- ─── PAINÉIS DE SUPORTE INFERIORES ─────────────────────────────── -->
+              <div class="bp-bottom-panels">
+                <div class="bp-panel bp-panel-pool" data-zone-id="dock">
+                  <div class="bp-panel-header">
+                    <i data-lucide="users"></i>
+                    <span>POOL DE APOIO / SEM POSTO</span>
+                    <span class="bp-count" id="count-dock">0</span>
                   </div>
-                  <div class="zone-counter">
-                    <span class="count-value" id="count-atrelamento">0</span>
-                  </div>
+                  <div class="bp-cards-drop-area" id="drop-dock" data-zone-id="dock"></div>
                 </div>
-                <div class="zone-subtext">Vinculação de etiquetas e SKUs</div>
-                <div class="zone-drop-area" id="drop-atrelamento">
-                  <!-- Operator Cards -->
+                <div class="bp-panel bp-panel-synergy" data-zone-id="external_synergy">
+                  <div class="bp-panel-header">
+                    <i data-lucide="external-link"></i>
+                    <span>SINERGIA EXTERNA</span>
+                    <span class="bp-count" id="count-ext-synergy">0</span>
+                  </div>
+                  <div class="bp-cards-drop-area" id="drop-external_synergy" data-zone-id="external_synergy"></div>
                 </div>
-              </div>
-
-              <!-- Bottom Left: Pool de Apoio -->
-              <div class="zone-card zone-dock" data-zone-id="dock">
-                <div class="zone-header">
-                  <div class="zone-info">
-                    <span class="zone-badge"><i data-lucide="user-check"></i></span>
-                    <h3>POOL DE APOIO / SEM POSTO</h3>
+                <div class="bp-panel bp-panel-inactive" data-zone-id="inactive">
+                  <div class="bp-panel-header">
+                    <i data-lucide="user-x"></i>
+                    <span>FOLGA / FALTA / ATESTADO</span>
+                    <span class="bp-count" id="count-inactive">0</span>
                   </div>
-                  <div class="zone-counter">
-                    <span class="count-value" id="count-dock">0</span>
-                  </div>
-                </div>
-                <div class="zone-subtext">Operadores aguardando definição de posto</div>
-                <div class="zone-drop-area" id="drop-dock">
-                  <!-- Operator Cards -->
-                </div>
-              </div>
-
-              <!-- Bottom Right Split: FECHAMENTO AUTOMÁTICO & FECHAMENTO CPT -->
-              <div class="bottom-split-container">
-                <!-- Sub-box Left: FECHAMENTO AUTOMÁTICO -->
-                <div class="zone-card zone-fechamento-aut" data-zone-id="fechamento_aut">
-                  <div class="zone-header">
-                    <div class="zone-info">
-                      <span class="zone-badge">5</span>
-                      <div>
-                        <h3>FECHAMENTO AUT</h3>
-                        <div class="zone-ops-bar">
-                          <i data-lucide="shield-check"></i>
-                          <span class="ops-label">Ops:</span>
-                          <select class="ops-select" data-sector="fechamento_aut" id="ops-select-fechamento_aut">
-                            <!-- Filled dynamically by JS -->
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="zone-counter">
-                      <span class="count-value" id="count-fechamento_aut">0</span>
-                    </div>
-                  </div>
-                  <div class="zone-subtext">Empacotamento & Paletização Aut.</div>
-                  <div class="zone-drop-area" id="drop-fechamento_aut">
-                    <!-- Operator Cards -->
-                  </div>
-                </div>
-
-                <!-- Sub-box Right: FECHAMENTO CPT -->
-                <div class="zone-card zone-fechamento-cpt" data-zone-id="fechamento_cpt">
-                  <div class="zone-header">
-                    <div class="zone-info">
-                      <span class="zone-badge">6</span>
-                      <div>
-                        <h3>FECHAMENTO CPT</h3>
-                        <div class="zone-ops-bar">
-                          <i data-lucide="shield-check"></i>
-                          <span class="ops-label">Ops:</span>
-                          <select class="ops-select" data-sector="fechamento_cpt" id="ops-select-fechamento_cpt">
-                            <!-- Filled dynamically by JS -->
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="zone-counter">
-                      <span class="count-value" id="count-fechamento_cpt">0</span>
-                    </div>
-                  </div>
-                  <div class="zone-subtext">Corte de horário & Expedição crítica</div>
-                  <div class="zone-drop-area" id="drop-fechamento_cpt">
-                    <!-- Operator Cards -->
-                  </div>
+                  <div class="bp-cards-drop-area" id="drop-inactive" data-zone-id="inactive"></div>
                 </div>
               </div>
 
             </div>
-
-            <!-- External & Non-Active Side Panels -->
-            <div class="side-panels-column">
-              <!-- External Synergy Panel -->
-              <div class="panel-box panel-external-synergy" data-zone-id="external_synergy">
-                <div class="panel-title">
-                  <i data-lucide="external-link"></i>
-                  <span>SINERGIA EXTERNA</span>
-                  <span class="badge-count" id="count-ext-synergy">0</span>
-                </div>
-                <p class="panel-desc">Operadores alocados em sinergia externa</p>
-                <div class="zone-drop-area" id="drop-external_synergy" data-zone-id="external_synergy">
-                  <!-- External Synergy Cards -->
-                </div>
-              </div>
-
-              <!-- Off & Absent Panel -->
-              <div class="panel-box panel-inactive" data-zone-id="inactive">
-                <div class="panel-title">
-                  <i data-lucide="user-x"></i>
-                  <span>FOLGA / FALTA / ATESTADO</span>
-                  <span class="badge-count" id="count-inactive">0</span>
-                </div>
-                <p class="panel-desc">Indisponíveis na operação hoje</p>
-                <div class="zone-drop-area" id="drop-inactive" data-zone-id="inactive">
-                  <!-- Inactive Cards -->
-                </div>
-              </div>
-            </div>
+            <!-- END blueprint-map -->
 
           </div>
         </div>

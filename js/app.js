@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OpSinergia REWORK - Main Application Controller (Dynamic Multi-Person Bancadas)
+   OpSinergia REWORK - Main Controller (Mapa de Ocupação & Position Catalog B01-O02)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,23 +27,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Date Change Handler: Preserves Last Working Zone & Restores Fixed Groups
+  // Date Change Handler: Preserves Last Working Zone, Bench & Position and Restores on Return
   function onDateChange(selectedDate) {
     const folgaTurma = ESCALA_FOLGAS_AGOSTO_2026[selectedDate];
     if (folgaTurma) {
       operators.forEach(op => {
         if (op.turma === folgaTurma) {
-          // Save active post before entering Folga
+          // Save active post & bancada before entering Folga
           if (op.zone !== 'inactive') {
             op.lastWorkingZone = op.zone;
+            if (op.bancadaId) op.lastBancadaId = op.bancadaId;
+            if (op.posCode) op.lastPosCode = op.posCode;
           }
           op.status = 'OFF';
           op.zone = 'inactive';
+          op.bancadaId = null;
+          op.posCode = null;
         } else {
           if (op.status === 'OFF') {
             op.status = 'PRESENT';
-            // Restore exact last working post (Buffer, Atrelamento, Ilhas, etc.)
-            op.zone = op.lastWorkingZone || 'dock';
+            // Restore exact last working post & bancada
+            op.zone = op.lastWorkingZone || (op.lastBancadaId ? 'ilhas' : 'dock');
+            op.bancadaId = op.lastBancadaId || null;
+            op.posCode = op.lastPosCode || null;
           }
         }
       });
@@ -54,14 +60,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const groupOps = operators.filter(o => g.opIds.includes(o.id));
         const activeGroupOps = groupOps.filter(o => o.status === 'PRESENT');
         if (activeGroupOps.length > 0) {
-          const anyInIlhas = activeGroupOps.some(o => o.lastWorkingZone === 'ilhas');
-          if (anyInIlhas) {
-            activeGroupOps.forEach(o => {
-              o.zone = 'ilhas';
-              o.lastWorkingZone = 'ilhas';
-              o.bancadaId = g.id;
-            });
-          }
+          const targetBench = activeGroupOps.find(o => o.lastBancadaId)?.lastBancadaId || activeGroupOps[0].bancadaId || `bancada-1`;
+          activeGroupOps.forEach(o => {
+            o.zone = 'ilhas';
+            o.lastWorkingZone = 'ilhas';
+            o.bancadaId = targetBench;
+          });
         }
       });
 
@@ -94,12 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!selectEl) return;
 
       const currentAssigned = opsSupervisors[sec] || DEFAULT_OPS_SUPERVISORS[0];
-
-      // Build options
       let html = '';
-      DEFAULT_OPS_SUPERVISORS.forEach(sup => {
-        const selectedStr = (sup === currentAssigned) ? 'selected' : '';
-        html += `<option value="${sup}" ${selectedStr}>${sup}</option>`;
+      DEFAULT_OPS_SUPERVISORS.forEach(name => {
+        html += `<option value="${name}" ${name === currentAssigned ? 'selected' : ''}>${name}</option>`;
       });
 
       // Add custom if not in list
@@ -135,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const matchRE = op.re.toLowerCase().includes(q);
         const matchRole = op.role.toLowerCase().includes(q);
         const matchTurma = op.turma.toLowerCase().includes(q);
-        if (!matchName && !matchRE && !matchRole && !matchTurma) return false;
+        const matchPosCode = op.posCode ? op.posCode.toLowerCase().includes(q) : false;
+        if (!matchName && !matchRE && !matchRole && !matchTurma && !matchPosCode) return false;
       }
 
       return true;
@@ -152,311 +154,646 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const totalScaled = currentOps.length;
-    const presentOps = currentOps.filter(op => op.status === 'PRESENT');
-    const externalSynergyOps = currentOps.filter(op => op.status === 'SYNERGY_EXT');
-    const offOps = currentOps.filter(op => op.status === 'OFF');
+    const externalSynergyOps = currentOps.filter(op => op.status === 'SYNERGY_EXT' || op.zone === 'external_synergy');
+    const offOps = currentOps.filter(op => op.status === 'OFF' || op.zone === 'inactive');
     const absentOps = currentOps.filter(op => op.status === 'ABSENT');
 
-    // Dinner counters for working operators
+    // Dinner counters
     const workingOps = currentOps.filter(op => op.status === 'PRESENT' || op.status === 'SYNERGY_EXT');
     const jantar18Count = workingOps.filter(op => op.jantar === '18:30').length;
     const jantar19Count = workingOps.filter(op => op.jantar === '19:30').length;
 
-    document.getElementById('kpiTotalScaled').textContent = totalScaled;
-    document.getElementById('kpiPresent').textContent = presentOps.length;
-    document.getElementById('kpiExternalSynergy').textContent = externalSynergyOps.length;
-    document.getElementById('kpiOffAbsent').textContent = offOps.length + absentOps.length;
-    document.getElementById('kpiOffAbsentSub').textContent = `${offOps.length} Folgas | ${absentOps.length} Faltas`;
-    
-    document.getElementById('kpiJantar18').textContent = jantar18Count;
-    document.getElementById('kpiJantar19').textContent = jantar19Count;
+    const totalScaledEl = document.getElementById('kpiTotalScaled');
+    if (totalScaledEl) totalScaledEl.textContent = totalScaled;
+
+    const extEl = document.getElementById('kpiExternalSynergy');
+    if (extEl) extEl.textContent = externalSynergyOps.length;
+
+    const offEl = document.getElementById('kpiOffAbsent');
+    if (offEl) offEl.textContent = offOps.length + absentOps.length;
+
+    const offSubEl = document.getElementById('kpiOffAbsentSub');
+    if (offSubEl) offSubEl.textContent = `${offOps.length} Folgas${absentOps.length > 0 ? ' | ' + absentOps.length + ' Faltas' : ''}`;
+
+    const j18El = document.getElementById('kpiJantar18');
+    if (j18El) j18El.textContent = jantar18Count;
+
+    const j19El = document.getElementById('kpiJantar19');
+    if (j19El) j19El.textContent = jantar19Count;
   }
 
   // --------------------------------------------------------------------------
-  // Render Tab 1: 2D Spatial Floor Plan
+  // Render Tab 1: 2D Spatial Blueprint Floor Plan with Position Codes (B01-O02)
   // --------------------------------------------------------------------------
   function renderFloorPlan() {
     const filteredOps = getFilteredOperators();
 
-    const zoneContainers = {
-      buffer_guardioes: document.getElementById('drop-buffer_guardioes'),
-      buffer_saida: document.getElementById('drop-buffer_saida'),
-      ilhas: document.getElementById('drop-ilhas'),
-      oportunidades: document.getElementById('drop-oportunidades'),
-      atrelamento: document.getElementById('drop-atrelamento'),
-      fechamento_aut: document.getElementById('drop-fechamento_aut'),
-      fechamento_cpt: document.getElementById('drop-fechamento_cpt'),
-      dock: document.getElementById('drop-dock'),
-      external_synergy: document.getElementById('drop-external_synergy'),
-      inactive: document.getElementById('drop-inactive')
+    // Map operators by posCode for instant slot lookup
+    const opsByPosCode = new Map();
+    const opsByZone = {
+      buffer_guardioes: [], buffer_saida: [], ilhas: [],
+      oportunidades: [], atrelamento: [], fechamento_aut: [],
+      fechamento_cpt: [], ops: [], dock: [], external_synergy: [], inactive: []
     };
-
-    // Clear containers
-    Object.keys(zoneContainers).forEach(zId => {
-      if (zoneContainers[zId]) zoneContainers[zId].innerHTML = '';
-    });
-
-    const zoneCounts = {
-      buffer_guardioes: 0, buffer_saida: 0, buffer_total: 0,
-      ilhas: 0, oportunidades: 0, atrelamento: 0,
-      fechamento_aut: 0, fechamento_cpt: 0, dock: 0, external_synergy: 0, inactive: 0
-    };
-
-    // Array to collect Ilhas operators
-    const ilhasOperators = [];
 
     filteredOps.forEach(op => {
-      let zId = op.zone || 'dock';
+      let z = op.zone || 'dock';
+      if (z === 'buffer') z = 'buffer_guardioes';
 
-      // Fallback for legacy buffer zone string
-      if (zId === 'buffer') zId = 'buffer_guardioes';
+      if (op.posCode) {
+        opsByPosCode.set(op.posCode, op);
+      }
 
-      if (zId === 'buffer_guardioes' || zId === 'buffer_saida') {
-        zoneCounts[zId]++;
-        zoneCounts.buffer_total++;
-        if (zoneContainers[zId]) {
-          const cardEl = createOperatorCardEl(op);
-          zoneContainers[zId].appendChild(cardEl);
-        }
-      } else if (zId === 'ilhas') {
-        zoneCounts.ilhas++;
-        ilhasOperators.push(op);
+      if (opsByZone[z]) {
+        opsByZone[z].push(op);
+      } else if (op.status === 'OFF' || op.status === 'ABSENT') {
+        opsByZone.inactive.push(op);
       } else {
-        if (zoneCounts[zId] !== undefined) {
-          zoneCounts[zId]++;
-        }
-        if (zoneContainers[zId]) {
-          const cardEl = createOperatorCardEl(op);
-          zoneContainers[zId].appendChild(cardEl);
-        }
+        opsByZone.dock.push(op);
       }
     });
 
-    // Render Ilhas with Padlock Toggle & Multi-Person Bancadas
-    renderIlhasBancadas(ilhasOperators, zoneContainers.ilhas);
+    // 1. Render all Fixed Blueprint Slots (Non-Ilhas)
+    const fixedSlotDefinitions = [
+      // Fechamento AUT
+      { id: 'slot-F01', posCode: 'F01', zone: 'fechamento_aut', role: 'REP 1' },
+      { id: 'slot-F02', posCode: 'F02', zone: 'fechamento_aut', role: 'REP 1' },
 
-    // Update Counter Badges
-    document.getElementById('count-buffer').textContent = zoneCounts.buffer_total;
-    if (document.getElementById('count-buffer_guardioes')) {
-      document.getElementById('count-buffer_guardioes').textContent = zoneCounts.buffer_guardioes;
-    }
-    if (document.getElementById('count-buffer_saida')) {
-      document.getElementById('count-buffer_saida').textContent = zoneCounts.buffer_saida;
-    }
+      // Buffer - Prosperidade (5 posições P01-P05)
+      { id: 'slot-P01', posCode: 'P01', zone: 'oportunidades', role: 'REP 1' },
+      { id: 'slot-P02', posCode: 'P02', zone: 'oportunidades', role: 'REP 1' },
+      { id: 'slot-P03', posCode: 'P03', zone: 'oportunidades', role: 'REP 1' },
+      { id: 'slot-P04', posCode: 'P04', zone: 'oportunidades', role: 'REP 1' },
+      { id: 'slot-P05', posCode: 'P05', zone: 'oportunidades', role: 'REP 1' },
 
-    const simpleZones = ['ilhas', 'oportunidades', 'atrelamento', 'fechamento_aut', 'fechamento_cpt', 'dock', 'external_synergy', 'inactive'];
-    simpleZones.forEach(zId => {
-      const el = document.getElementById(`count-${zId}`);
-      if (el) {
-        el.textContent = zoneCounts[zId];
+      // Buffer - Atrelamento Buffer (B07, B08)
+      { id: 'slot-B07', posCode: 'B07', zone: 'buffer_saida', role: 'Atrelamento Buffer' },
+      { id: 'slot-B08', posCode: 'B08', zone: 'buffer_saida', role: 'Atrelamento Buffer' },
+
+      // Buffer - Buffer de Saída (B03-B06)
+      { id: 'slot-B03', posCode: 'B03', zone: 'buffer_saida', role: 'Buffer de Saída' },
+      { id: 'slot-B04', posCode: 'B04', zone: 'buffer_saida', role: 'Buffer de Saída' },
+      { id: 'slot-B05', posCode: 'B05', zone: 'buffer_saida', role: 'Buffer de Saída' },
+      { id: 'slot-B06', posCode: 'B06', zone: 'buffer_saida', role: 'Buffer de Saída' },
+
+      // Buffer - Guardiões (B01, B02)
+      { id: 'slot-B01', posCode: 'B01', zone: 'buffer_guardioes', role: 'Guardião do Buffer' },
+      { id: 'slot-B02', posCode: 'B02', zone: 'buffer_guardioes', role: 'Guardião do Buffer' },
+
+      // Mesas Ops (O01, O02)
+      { id: 'slot-O01', posCode: 'O01', zone: 'ops', role: 'Ops II' },
+      { id: 'slot-O02', posCode: 'O02', zone: 'ops', role: 'Ops III' },
+
+      // Fechamento CPT (F04-F07)
+      { id: 'slot-F04', posCode: 'F04', zone: 'fechamento_cpt', role: 'REP 1' },
+      { id: 'slot-F05', posCode: 'F05', zone: 'fechamento_cpt', role: 'REP 1' },
+      { id: 'slot-F06', posCode: 'F06', zone: 'fechamento_cpt', role: 'REP 1' },
+      { id: 'slot-F07', posCode: 'F07', zone: 'fechamento_cpt', role: 'REP 1' }
+    ];
+
+    fixedSlotDefinitions.forEach(slotDef => {
+      const containerEl = document.getElementById(slotDef.id);
+      if (!containerEl) return;
+      containerEl.innerHTML = '';
+
+      const op = opsByPosCode.get(slotDef.posCode) || 
+                 opsByZone[slotDef.zone]?.find(o => !o.posCode && o.status === 'PRESENT');
+
+      if (op) {
+        op.posCode = slotDef.posCode;
+        op.zone = slotDef.zone;
+        containerEl.appendChild(createSmallOperatorCardEl(op, slotDef.posCode));
+      } else {
+        containerEl.appendChild(createEmptySlotEl(slotDef.posCode, slotDef.zone, slotDef.role));
       }
     });
+
+    // 2. Render Atrelamento Section (Ruas 1 & 2 de CPTs)
+    renderAtrelamentoSection(opsByZone.atrelamento || []);
+
+    // 3. Render Ilhas 4x4 Grid (16 Bancadas = 32 Posições Físicas)
+    renderIlhasGrid(opsByPosCode, opsByZone.ilhas);
+
+    // 4. Render Support Panels (Pool, Sinergia, Inativos)
+    renderSupportPanels(opsByZone);
+
+    // 5. Update Zone Count Badges
+    const bufferCount = (opsByZone.buffer_guardioes.length + opsByZone.buffer_saida.length);
+    const countBufferEl = document.getElementById('count-buffer');
+    if (countBufferEl) countBufferEl.textContent = bufferCount;
+
+    const countIlhasEl = document.getElementById('count-ilhas');
+    if (countIlhasEl) countIlhasEl.textContent = opsByZone.ilhas.length;
+
+    const countDockEl = document.getElementById('count-dock');
+    if (countDockEl) countDockEl.textContent = opsByZone.dock.length;
+
+    const countExtEl = document.getElementById('count-ext-synergy');
+    if (countExtEl) countExtEl.textContent = opsByZone.external_synergy.length;
+
+    const countInactiveEl = document.getElementById('count-inactive');
+    if (countInactiveEl) countInactiveEl.textContent = opsByZone.inactive.length;
 
     setupDragAndDrop();
   }
 
-  // Render Ilhas Bancadas with Padlock Toggle 🔒 / 🔓 and Multi-Person Support (2, 3, 4, 5+ ops per Bancada)
-  function renderIlhasBancadas(opsList, containerEl) {
-    if (!containerEl) return;
-    containerEl.innerHTML = '';
+  // --------------------------------------------------------------------------
+  // Render Atrelamento: Ruas 1 & 2 de CPTs com suporte flexível a múltiplos REPs
+  // --------------------------------------------------------------------------
+  function renderAtrelamentoSection(atrelamentoOpsList) {
+    const secEl = document.getElementById('sec-atrelamento');
+    if (!secEl) return;
 
-    if (opsList.length === 0) {
-      containerEl.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.75rem; border:1px dashed rgba(255,255,255,0.1); border-radius:6px;">Nenhum operador alocado nas Ilhas</div>`;
-      return;
+    const countEl = document.getElementById('count-atrelamento');
+    if (countEl) {
+      countEl.textContent = `${atrelamentoOpsList.length} ${atrelamentoOpsList.length === 1 ? 'rep' : 'reps'}`;
     }
 
-    // Group operators into Bancadas
-    const bancadaMap = new Map(); // key: bancadaKey, value: { isFixedGroup, groupId, ops: [] }
-
-    // 1. Process active Fixed Groups first
-    fixedGroups.forEach(group => {
-      const groupOps = opsList.filter(o => group.opIds.includes(o.id));
-      if (groupOps.length > 0) {
-        bancadaMap.set(group.id, {
-          isFixedGroup: true,
-          groupId: group.id,
-          ops: groupOps
-        });
+    // Drag events on the overall atrelamento section
+    secEl.ondragover = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      secEl.classList.add('drag-over');
+    };
+    secEl.ondragleave = (e) => {
+      if (!secEl.contains(e.relatedTarget)) {
+        secEl.classList.remove('drag-over');
       }
-    });
-
-    // 2. Process unlinked operators by their op.bancadaId
-    const unlinkedOps = opsList.filter(o => !getGroupForOperator(o.id, fixedGroups));
-
-    unlinkedOps.forEach(op => {
-      let bKey = op.bancadaId;
-
-      // If operator has no bancadaId or refers to an old group, find an active unlinked bancada or assign a default
-      if (!bKey || bKey.startsWith('group-')) {
-        const firstOpenUnlinked = Array.from(bancadaMap.entries()).find(([k, v]) => !v.isFixedGroup);
-        if (firstOpenUnlinked) {
-          bKey = firstOpenUnlinked[0];
-        } else {
-          bKey = `bancada-flex-1`;
-        }
+    };
+    secEl.ondrop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      secEl.classList.remove('drag-over');
+      if (draggedOpId) {
+        moveOperatorToZone(draggedOpId, 'atrelamento');
       }
+    };
 
-      op.bancadaId = bKey;
+    // Separate operators into Rua 1 (A01, A02, A05, ...) and Rua 2 (A03, A04, A06, ...)
+    const rua1Ops = [];
+    const rua2Ops = [];
 
-      if (!bancadaMap.has(bKey)) {
-        bancadaMap.set(bKey, {
-          isFixedGroup: false,
-          groupId: null,
-          ops: []
-        });
-      }
-      bancadaMap.get(bKey).ops.push(op);
-    });
-
-    // Render each Bancada Box
-    let bCounter = 1;
-    bancadaMap.forEach((bancada, bKey) => {
-      const bancadaIndex = bCounter++;
-      const pairBox = document.createElement('div');
-      pairBox.className = 'ilha-pair-box';
-      pairBox.dataset.zoneId = 'ilhas';
-      pairBox.dataset.bancadaId = bKey;
-      pairBox.dataset.bancadaIdx = bancadaIndex;
-
-      if (bancada.isFixedGroup) {
-        pairBox.classList.add('is-fixed');
-      }
-
-      let statusBadgeHtml = '';
-      let lockButtonHtml = '';
-
-      const opIdsJson = JSON.stringify(bancada.ops.map(o => o.id));
-
-      if (bancada.isFixedGroup) {
-        statusBadgeHtml = `<span class="badge-group-locked"><i data-lucide="lock"></i> Fixado (${bancada.ops.length})</span>`;
-        lockButtonHtml = `
-          <button class="btn-lock-toggle locked" title="Bancada Fixada 🔒 (Clique para abrir/desvincular)" data-action="unlink" data-bkey="${bKey}" data-opids='${opIdsJson}'>
-            <i data-lucide="lock"></i>
-          </button>
-        `;
+    atrelamentoOpsList.forEach(op => {
+      if (op.posCode === 'A01' || op.posCode === 'A02' || op.posCode === 'A05' || op.posCode === 'A07') {
+        rua1Ops.push(op);
+      } else if (op.posCode === 'A03' || op.posCode === 'A04' || op.posCode === 'A06' || op.posCode === 'A08') {
+        rua2Ops.push(op);
       } else {
-        lockButtonHtml = `
-          <button class="btn-lock-toggle unlocked" title="Trancar Bancada 🔓 (Fixar estes ${bancada.ops.length} colaboradores juntos)" data-action="link" data-bkey="${bKey}" data-opids='${opIdsJson}'>
-            <i data-lucide="unlock"></i>
-          </button>
-        `;
+        if (rua1Ops.length <= rua2Ops.length) {
+          rua1Ops.push(op);
+        } else {
+          rua2Ops.push(op);
+        }
+      }
+    });
 
-        if (bancada.ops.length >= 2) {
-          const firstTurma = bancada.ops[0].turma;
-          const allSameTurma = bancada.ops.every(o => o.turma === firstTurma);
-          if (allSameTurma) {
-            pairBox.classList.add('pair-valid');
-            statusBadgeHtml = `<span class="pair-status-match">✓ Turma ${firstTurma} (${bancada.ops.length} ops)</span>`;
-          } else {
-            pairBox.classList.add('pair-mismatch');
-            const turmasStr = Array.from(new Set(bancada.ops.map(o => o.turma))).join('/');
-            statusBadgeHtml = `<span class="pair-status-mismatch" title="Atenção: Turmas diferentes!">⚠️ Turmas (${turmasStr})</span>`;
+    // Helper to render a Rua
+    function renderRua(ruaNum, ruaOps, containerId, defaultCodes) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+
+      const ruaBlock = container.closest('.bp-atrel-rua-block');
+      if (ruaBlock) {
+        ruaBlock.ondragover = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          ruaBlock.classList.add('drag-over');
+        };
+        ruaBlock.ondragleave = (e) => {
+          if (!ruaBlock.contains(e.relatedTarget)) {
+            ruaBlock.classList.remove('drag-over');
           }
-        } else if (bancada.ops.length === 1) {
-          pairBox.classList.add('pair-valid');
-          statusBadgeHtml = `<span class="pair-status-match" style="opacity:0.75;">T. ${bancada.ops[0].turma}</span>`;
+        };
+        ruaBlock.ondrop = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          ruaBlock.classList.remove('drag-over');
+          if (draggedOpId) {
+            const usedCodes = new Set(atrelamentoOpsList.map(o => o.posCode));
+            const assignedCode = defaultCodes.find(c => !usedCodes.has(c)) || (ruaNum === 1 ? 'A05' : 'A06');
+            moveOperatorToZone(draggedOpId, 'atrelamento', null, assignedCode);
+          }
+        };
+      }
+
+      // Render occupied operator cards
+      ruaOps.forEach((op, idx) => {
+        const posCode = op.posCode || defaultCodes[idx] || (ruaNum === 1 ? `A0${idx * 2 + 1}` : `A0${idx * 2 + 2}`);
+        op.posCode = posCode;
+        op.zone = 'atrelamento';
+        container.appendChild(createSmallOperatorCardEl(op, posCode));
+      });
+
+      // If fewer than default slots, show empty slot placeholders
+      if (ruaOps.length < defaultCodes.length) {
+        for (let i = ruaOps.length; i < defaultCodes.length; i++) {
+          const code = defaultCodes[i];
+          container.appendChild(createEmptySlotEl(code, 'atrelamento', 'REP 1'));
         }
       }
 
-      pairBox.innerHTML = `
-        <div class="ilha-pair-header">
-          <span class="pair-title">Bancada ${bancadaIndex}</span>
-          <div style="display:flex; align-items:center; gap:0.35rem;">
-            ${statusBadgeHtml}
-            ${lockButtonHtml}
-          </div>
-        </div>
-        <div class="pair-cards-container" style="display:flex; flex-direction:column; gap:0.3rem;"></div>
-      `;
+      // Explicit Add REP button for this rua
+      const addRuaBtn = document.createElement('div');
+      addRuaBtn.className = 'bp-atrel-add-target';
+      addRuaBtn.innerHTML = `<span>+ REP Rua ${ruaNum}</span>`;
+      addRuaBtn.title = `Clique ou arraste um operador para adicionar à Rua ${ruaNum} do Atrelamento`;
+      addRuaBtn.onclick = (e) => {
+        e.stopPropagation();
+        addOperatorToAtrelamento(ruaNum);
+      };
+      addRuaBtn.ondragover = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        addRuaBtn.classList.add('drag-over');
+      };
+      addRuaBtn.ondragleave = (e) => {
+        e.stopPropagation();
+        addRuaBtn.classList.remove('drag-over');
+      };
+      addRuaBtn.ondrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        addRuaBtn.classList.remove('drag-over');
+        if (draggedOpId) {
+          const usedCodes = new Set(atrelamentoOpsList.map(o => o.posCode));
+          const assignedCode = defaultCodes.find(c => !usedCodes.has(c)) || (ruaNum === 1 ? 'A05' : 'A06');
+          moveOperatorToZone(draggedOpId, 'atrelamento', null, assignedCode);
+        }
+      };
+      container.appendChild(addRuaBtn);
+    }
 
-      // Event Listener for Padlock Toggle Button 🔒 / 🔓
-      const btnLock = pairBox.querySelector('.btn-lock-toggle');
-      if (btnLock) {
-        btnLock.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const action = btnLock.dataset.action;
-          const targetOpIds = JSON.parse(btnLock.dataset.opids || '[]');
+    renderRua(1, rua1Ops, 'atrel-rua-1-slots', ['A01', 'A02']);
+    renderRua(2, rua2Ops, 'atrel-rua-2-slots', ['A03', 'A04']);
 
-          if (action === 'link' && targetOpIds.length > 0) {
-            const newGroupList = linkGroupInStorage(targetOpIds);
-            const createdGroup = newGroupList[newGroupList.length - 1];
-            if (createdGroup) {
-              targetOpIds.forEach(id => {
-                const o = operators.find(op => op.id === id);
-                if (o) o.bancadaId = createdGroup.id;
-              });
-            }
-          } else if (action === 'unlink' && targetOpIds.length > 0) {
-            unlinkGroupInStorage(targetOpIds[0]);
-            targetOpIds.forEach(id => {
-              const o = operators.find(op => op.id === id);
-              if (o) o.bancadaId = null;
-            });
-          }
-          saveOperatorsToStorage(operators);
-          renderAll();
-        });
+    // General Add REP Button for the entire Atrelamento section
+    const generalAddBtn = document.getElementById('btn-add-atrelamento');
+    if (generalAddBtn) {
+      generalAddBtn.onclick = (e) => {
+        e.stopPropagation();
+        addOperatorToAtrelamento(null);
+      };
+      generalAddBtn.ondragover = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        generalAddBtn.classList.add('drag-over');
+      };
+      generalAddBtn.ondragleave = (e) => {
+        e.stopPropagation();
+        generalAddBtn.classList.remove('drag-over');
+      };
+      generalAddBtn.ondrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        generalAddBtn.classList.remove('drag-over');
+        if (draggedOpId) {
+          moveOperatorToZone(draggedOpId, 'atrelamento');
+        }
+      };
+    }
+  }
+
+  // Helper to add operator directly to atrelamento from Pool or modal
+  function addOperatorToAtrelamento(ruaNum = null) {
+    const poolOp = operators.find(o => o.zone === 'dock' && o.status === 'PRESENT');
+    if (poolOp) {
+      const atrelOps = operators.filter(o => o.zone === 'atrelamento' && o.status === 'PRESENT');
+      const usedCodes = new Set(atrelOps.map(o => o.posCode));
+      let targetCode = null;
+      if (ruaNum === 1) {
+        targetCode = ['A01', 'A02', 'A05', 'A07'].find(c => !usedCodes.has(c)) || 'A05';
+      } else if (ruaNum === 2) {
+        targetCode = ['A03', 'A04', 'A06', 'A08'].find(c => !usedCodes.has(c)) || 'A06';
+      } else {
+        targetCode = ['A01', 'A02', 'A03', 'A04', 'A05', 'A06'].find(c => !usedCodes.has(c)) || 'A05';
       }
-
-      const cardsContainer = pairBox.querySelector('.pair-cards-container');
-      bancada.ops.forEach(op => {
-        cardsContainer.appendChild(createOperatorCardEl(op));
-      });
-      pairBox.dataset.opids = opIdsJson;
-      containerEl.appendChild(pairBox);
-    });
+      moveOperatorToZone(poolOp.id, 'atrelamento', null, targetCode);
+    } else {
+      openOperatorModal(null);
+    }
   }
 
   // --------------------------------------------------------------------------
-  // Operator Card Component Generator
+  // Render Ilhas: 16 Bancadas in 4x4 Grid (Suporte a 2, 3 ou mais operadores por bancada)
   // --------------------------------------------------------------------------
-  function createOperatorCardEl(op) {
-    const card = document.createElement('div');
-    card.className = `op-card status-${op.status}`;
-    card.setAttribute('draggable', 'true');
-    card.dataset.opId = op.id;
+  function renderIlhasGrid(opsByPosCode, ilhasOpsList) {
+    const gridContainer = document.getElementById('ilhasGridContainer');
+    if (!gridContainer) return;
+    gridContainer.innerHTML = '';
 
-    const jantarClass = op.jantar === '19:30' ? 'jantar-19' : '';
-    const shortName = getShortName(op.name);
+    fixedGroups = loadFixedGroupsFromStorage();
 
-    let synergyBadgeHtml = '';
-    if (op.status === 'SYNERGY_EXT') {
-      synergyBadgeHtml = `<div class="op-synergy-badge synergy-ext" style="margin-top:0.2rem; font-size:0.62rem;"><i data-lucide="arrow-up-right"></i> Sinergia Externa</div>`;
+    // Map operators to their assigned bancadaId
+    const bancadaMap = new Map();
+    for (let b = 1; b <= 16; b++) {
+      bancadaMap.set(`bancada-${b}`, []);
     }
 
-    const isLeader = op.role === 'Líder Operacional';
-    const leaderStar = isLeader ? '⭐ ' : '';
+    // 1. Assign operators that already have bancadaId or posCode
+    ilhasOpsList.forEach(op => {
+      let bId = op.bancadaId;
+      if (!bId && op.posCode && op.posCode.startsWith('I')) {
+        const num = parseInt(op.posCode.replace('I', ''), 10);
+        if (!isNaN(num)) {
+          const benchNum = Math.min(16, Math.max(1, Math.ceil(num / 2)));
+          bId = `bancada-${benchNum}`;
+          op.bancadaId = bId;
+        }
+      }
+      if (!bId) {
+        // Find first bench with less than 2 ops
+        for (let b = 1; b <= 16; b++) {
+          const candidateId = `bancada-${b}`;
+          if (bancadaMap.get(candidateId).length < 2) {
+            bId = candidateId;
+            op.bancadaId = bId;
+            break;
+          }
+        }
+      }
+      if (!bId) bId = 'bancada-1';
 
-    // Fixed Group indicator badge on card if locked
-    const groupRecord = getGroupForOperator(op.id, fixedGroups);
-    const fixedIconHtml = groupRecord ? `<span title="Bancada Fixada 🔒" style="color:#d8b4fe; font-size:0.65rem;">🔒</span>` : '';
+      if (!bancadaMap.has(bId)) {
+        bancadaMap.set(bId, []);
+      }
+      bancadaMap.get(bId).push(op);
+    });
+
+    // 2. Render each of the 16 Bancadas
+    for (let b = 1; b <= 16; b++) {
+      const bancadaId = `bancada-${b}`;
+      const benchOps = bancadaMap.get(bancadaId) || [];
+      const opIds = benchOps.map(o => o.id);
+
+      // Check if all/any operators in this bench are part of a fixed group
+      let isFixedGroup = false;
+      if (benchOps.length >= 2) {
+        const firstGroup = getGroupForOperator(benchOps[0].id, fixedGroups);
+        if (firstGroup && benchOps.every(o => firstGroup.opIds.includes(o.id))) {
+          isFixedGroup = true;
+        }
+      }
+
+      // Check turma mismatch
+      let hasMismatch = false;
+      const distinctTurmas = [...new Set(benchOps.map(o => o.turma))];
+      if (distinctTurmas.length > 1) {
+        hasMismatch = true;
+      }
+
+      // Build Bancada Container
+      const bancadaBox = document.createElement('div');
+      bancadaBox.className = 'bp-bancada-card-unit' + (isFixedGroup ? ' is-fixed' : '') + (hasMismatch ? ' pair-mismatch' : '');
+      bancadaBox.dataset.bancadaId = bancadaId;
+      bancadaBox.dataset.zoneId = 'ilhas';
+
+      // Drag events on the whole bancada container
+      bancadaBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bancadaBox.classList.add('drag-over');
+      });
+
+      bancadaBox.addEventListener('dragleave', (e) => {
+        if (!bancadaBox.contains(e.relatedTarget)) {
+          bancadaBox.classList.remove('drag-over');
+        }
+      });
+
+      bancadaBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        bancadaBox.classList.remove('drag-over');
+        if (draggedOpId) {
+          moveOperatorToZone(draggedOpId, 'ilhas', bancadaId);
+        }
+      });
+
+      // Workbench Table Visual (Header with Bench ID, Operator Count in REPs, and Lock)
+      const tableBar = document.createElement('div');
+      tableBar.className = 'bp-workbench-table';
+      tableBar.innerHTML = `
+        <span class="bp-bench-id">B${b}</span>
+        <span class="bp-bench-count">${benchOps.length} ${benchOps.length === 1 ? 'rep' : 'reps'}</span>
+        <button class="bp-bench-lock-btn" title="${isFixedGroup ? '🔒 Grupo Fixado (clique para desvincular)' : '🔓 Fixar Grupo desta Bancada'}">
+          ${isFixedGroup ? '🔒' : '🔓'}
+        </button>
+      `;
+
+      // Lock toggle button handler for multi-operator group
+      const lockBtn = tableBar.querySelector('.bp-bench-lock-btn');
+      lockBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (benchOps.length < 2) {
+          alert('É necessário ter ao menos 2 operadores na bancada para fixar o grupo.');
+          return;
+        }
+        if (isFixedGroup) {
+          unlinkGroupInStorage(benchOps[0].id);
+        } else {
+          linkGroupInStorage(benchOps.map(o => o.id));
+        }
+        renderAll();
+      });
+
+      bancadaBox.appendChild(tableBar);
+
+      // Warning Bar for Mismatched Turmas (explaining why border is red)
+      if (hasMismatch) {
+        const warningEl = document.createElement('div');
+        warningEl.className = 'bp-bancada-warning';
+        warningEl.title = `Atenção: Turmas divergentes nesta bancada (${distinctTurmas.map(t => 'Turma ' + t).join(' + ')}). Em dias de folga de uma das turmas, a bancada ficará desbalanceada.`;
+        warningEl.innerHTML = `⚠️ Turmas Dif. (${distinctTurmas.map(t => 'T.' + t).join('+')})`;
+        bancadaBox.appendChild(warningEl);
+      }
+
+      // Drop Zone for Multiple Operator Cards
+      const dropZone = document.createElement('div');
+      dropZone.className = 'bp-bancada-ops-drop';
+      dropZone.dataset.bancadaId = bancadaId;
+      dropZone.dataset.zoneId = 'ilhas';
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('drag-over');
+      });
+
+      dropZone.addEventListener('dragleave', (e) => {
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('drag-over');
+        if (draggedOpId) {
+          moveOperatorToZone(draggedOpId, 'ilhas', bancadaId);
+        }
+      });
+
+      // Render each operator card inside the bench
+      if (benchOps.length === 0) {
+        const emptySlot = document.createElement('div');
+        emptySlot.className = 'bp-bancada-empty-slot';
+        emptySlot.innerHTML = `<span class="bp-slot-plus">+</span><span>B${b} Vazio</span>`;
+        emptySlot.addEventListener('click', () => {
+          openNewOperatorModalForBancada(bancadaId);
+        });
+        dropZone.appendChild(emptySlot);
+      } else {
+        benchOps.forEach((op, idx) => {
+          const autoPosCode = op.posCode || `I${String((b - 1) * 2 + Math.min(idx + 1, 2)).padStart(2, '0')}`;
+          dropZone.appendChild(createSmallOperatorCardEl(op, autoPosCode));
+        });
+      }
+
+      // Explicit Add-Target Button & Drop Target for adding more operators
+      const addTarget = document.createElement('div');
+      addTarget.className = 'bp-bancada-add-target';
+      addTarget.innerHTML = `<span>+ Adicionar à B${b}</span>`;
+      addTarget.title = `Clique para alocar do pool ou arraste um operador para adicionar à Bancada B${b}`;
+      
+      addTarget.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openNewOperatorModalForBancada(bancadaId);
+      });
+
+      addTarget.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        addTarget.classList.add('drag-over');
+      });
+
+      addTarget.addEventListener('dragleave', (e) => {
+        e.stopPropagation();
+        addTarget.classList.remove('drag-over');
+      });
+
+      addTarget.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        addTarget.classList.remove('drag-over');
+        if (draggedOpId) {
+          moveOperatorToZone(draggedOpId, 'ilhas', bancadaId);
+        }
+      });
+
+      dropZone.appendChild(addTarget);
+      bancadaBox.appendChild(dropZone);
+      gridContainer.appendChild(bancadaBox);
+    }
+  }
+
+  // Helper to open modal for adding an operator directly to a bancada
+  function openNewOperatorModalForBancada(bancadaId) {
+    const poolOp = operators.find(o => o.zone === 'dock' && o.status === 'PRESENT');
+    if (poolOp) {
+      poolOp.zone = 'ilhas';
+      poolOp.bancadaId = bancadaId;
+      saveOperatorsToStorage(operators);
+      renderAll();
+    } else {
+      openOperatorModal(null);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Render Support Panels (Pool, Sinergia, Inativos)
+  // --------------------------------------------------------------------------
+  function renderSupportPanels(opsByZone) {
+    const dropDock = document.getElementById('drop-dock');
+    const dropSynergy = document.getElementById('drop-external_synergy');
+    const dropInactive = document.getElementById('drop-inactive');
+
+    if (dropDock) {
+      dropDock.innerHTML = '';
+      if (opsByZone.dock.length === 0) {
+        dropDock.innerHTML = `<span style="font-size:0.65rem; color:rgba(255,255,255,0.4); padding:6px;">Nenhum operador sem posto</span>`;
+      } else {
+        opsByZone.dock.forEach(op => {
+          dropDock.appendChild(createSmallOperatorCardEl(op, 'Pool'));
+        });
+      }
+    }
+
+    if (dropSynergy) {
+      dropSynergy.innerHTML = '';
+      if (opsByZone.external_synergy.length === 0) {
+        dropSynergy.innerHTML = `<span style="font-size:0.65rem; color:rgba(255,255,255,0.4); padding:6px;">Nenhum operador em sinergia externa</span>`;
+      } else {
+        opsByZone.external_synergy.forEach(op => {
+          dropSynergy.appendChild(createSmallOperatorCardEl(op, 'Sinergia'));
+        });
+      }
+    }
+
+    if (dropInactive) {
+      dropInactive.innerHTML = '';
+      if (opsByZone.inactive.length === 0) {
+        dropInactive.innerHTML = `<span style="font-size:0.65rem; color:rgba(255,255,255,0.4); padding:6px;">Todos presentes hoje</span>`;
+      } else {
+        opsByZone.inactive.forEach(op => {
+          dropInactive.appendChild(createSmallOperatorCardEl(op, op.status === 'OFF' ? 'Folga' : 'Falta'));
+        });
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Small Operator Card Component (Replacing SVG Stick Figures)
+  // --------------------------------------------------------------------------
+  function createSmallOperatorCardEl(op, posCodeBadge = null) {
+    const card = document.createElement('div');
+    card.className = `bp-card status-${op.status} turma-${op.turma}`;
+    card.setAttribute('draggable', 'true');
+    card.dataset.opId = op.id;
+    card.dataset.posCode = op.posCode || posCodeBadge || '';
+    card.dataset.zoneId = op.zone || 'dock';
+    card.title = `${op.name} | RE: ${op.re} | Turma ${op.turma} | ${op.role}`;
+
+    const shortName = getShortName(op.name);
+    const initials = getInitials(op.name);
+    const isLeader = op.role === 'Líder Operacional';
+    const leaderMark = isLeader ? '⭐ ' : '';
+    const groupRec = getGroupForOperator(op.id, fixedGroups);
+    const lockMark = groupRec ? '🔒' : '';
+    const posText = posCodeBadge || op.posCode || op.role || 'Operador';
 
     card.innerHTML = `
-      <span class="op-status-dot"></span>
-      <div class="op-card-name">${leaderStar}${shortName} ${fixedIconHtml}</div>
-      <div class="op-card-footer">
-        <span class="op-turma-badge">T. ${op.turma}</span>
-        <span class="op-jantar-badge ${jantarClass}"><i data-lucide="utensils"></i> ${op.jantar || '18:30'}</span>
+      <div class="bp-card-avatar turma-${op.turma}">${initials}</div>
+      <div class="bp-card-info">
+        <div class="bp-card-name" title="${op.name}">${leaderMark}${shortName} ${lockMark}</div>
+        <div class="bp-card-meta">
+          <span class="bp-card-pos">${posText}</span>
+          <span class="bp-card-turma">T.${op.turma}</span>
+        </div>
       </div>
-      ${synergyBadgeHtml}
     `;
 
-    // Double click to edit
+    // Double click opens edit modal
     card.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       openOperatorModal(op);
     });
 
-    // Drag events (Card Drag & Drop Swapping)
+    // Drag events
     card.addEventListener('dragstart', (e) => {
       draggedOpId = op.id;
       card.classList.add('dragging');
       e.dataTransfer.setData('text/plain', op.id);
+      e.dataTransfer.effectAllowed = 'move';
     });
 
     card.addEventListener('dragend', () => {
       card.classList.remove('dragging');
-      document.querySelectorAll('.op-card').forEach(c => c.classList.remove('drag-target'));
+      document.querySelectorAll('.bp-card, .bp-slot-empty, .bp-cards-drop-area').forEach(c => {
+        c.classList.remove('drag-target');
+        c.classList.remove('slot-drag-over');
+        c.classList.remove('drag-over');
+      });
       draggedOpId = null;
     });
 
@@ -469,7 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     card.addEventListener('dragleave', (e) => {
-      e.preventDefault();
+      e.stopPropagation();
       card.classList.remove('drag-target');
     });
 
@@ -477,7 +814,25 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       e.stopPropagation();
       card.classList.remove('drag-target');
-      if (draggedOpId && draggedOpId !== op.id) {
+      if (!draggedOpId || draggedOpId === op.id) return;
+
+      const draggedOp = operators.find(o => o.id === draggedOpId);
+      if (op.zone === 'ilhas' && op.bancadaId) {
+        if (draggedOp && draggedOp.bancadaId === op.bancadaId) {
+          // Already in the same bancada: swap/reorder
+          swapOrMoveOperators(draggedOpId, op.id);
+        } else {
+          // Dragged from Pool, Sinergia or other bench: add to this bancada!
+          moveOperatorToZone(draggedOpId, 'ilhas', op.bancadaId);
+        }
+      } else if (op.zone === 'atrelamento') {
+        if (draggedOp && draggedOp.zone === 'atrelamento') {
+          swapOrMoveOperators(draggedOpId, op.id);
+        } else {
+          // Dragged from outside: add to Atrelamento!
+          moveOperatorToZone(draggedOpId, 'atrelamento');
+        }
+      } else {
         swapOrMoveOperators(draggedOpId, op.id);
       }
     });
@@ -485,14 +840,88 @@ document.addEventListener('DOMContentLoaded', () => {
     return card;
   }
 
+  // --------------------------------------------------------------------------
+  // Empty Slot Component (Interactive Drop Target for Position Codes)
+  // --------------------------------------------------------------------------
+  function createEmptySlotEl(posCode, zoneId, defaultRole = 'Vago', bancadaId = null) {
+    const slot = document.createElement('div');
+    slot.className = 'bp-slot-empty';
+    slot.dataset.posCode = posCode;
+    slot.dataset.zoneId = zoneId;
+    slot.dataset.role = defaultRole;
+    if (bancadaId) slot.dataset.bancadaId = bancadaId;
+    slot.title = `Posição ${posCode} (${defaultRole}) livre - Arraste um operador para cá`;
+
+    slot.innerHTML = `
+      <span class="bp-slot-plus">+</span>
+      <span class="bp-slot-label">${posCode}</span>
+      <span class="bp-slot-role">${defaultRole}</span>
+    `;
+
+    slot.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.add('slot-drag-over');
+    });
+
+    slot.addEventListener('dragleave', (e) => {
+      e.stopPropagation();
+      slot.classList.remove('slot-drag-over');
+    });
+
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      slot.classList.remove('slot-drag-over');
+      if (draggedOpId) {
+        assignOperatorToSlot(draggedOpId, posCode, zoneId, defaultRole, bancadaId);
+      }
+    });
+
+    return slot;
+  }
+
+  // Helper for Initials
+  function getInitials(name) {
+    if (!name) return 'OP';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  // Helper for Short Name
   function getShortName(name) {
     if (!name) return 'Operador';
-    const parts = name.trim().split(' ');
+    const parts = name.trim().split(' ').filter(Boolean);
     if (parts.length === 1) return parts[0];
     return `${parts[0]} ${parts[parts.length - 1]}`;
   }
 
-  // Swap position of two operators or move to target operator's spot/zone
+  // Assign Operator directly to a position code and zone
+  function assignOperatorToSlot(opId, posCode, zoneId, role, bancadaId = null) {
+    const op = operators.find(o => o.id === opId);
+    if (!op) return;
+
+    // Clear position code from any other operator who had it
+    operators.forEach(otherOp => {
+      if (otherOp.id !== opId && otherOp.posCode === posCode) {
+        otherOp.posCode = null;
+        otherOp.zone = 'dock';
+      }
+    });
+
+    op.posCode = posCode;
+    op.zone = zoneId;
+    op.status = 'PRESENT';
+    op.lastWorkingZone = zoneId;
+    if (bancadaId) op.bancadaId = bancadaId;
+    if (role && role !== 'Vago') op.role = role;
+
+    saveOperatorsToStorage(operators);
+    renderAll();
+  }
+
+  // Swap position of two operators
   function swapOrMoveOperators(sourceId, targetOpId) {
     if (!sourceId || !targetOpId || sourceId === targetOpId) return;
 
@@ -500,40 +929,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetOp = operators.find(o => o.id === targetOpId);
     if (!sourceOp || !targetOp) return;
 
-    // Save working zones and bancada IDs
+    // Swap position codes and zones
+    const tempZone = sourceOp.zone;
+    const tempPosCode = sourceOp.posCode;
+    const tempBancadaId = sourceOp.bancadaId;
+    const tempStatus = sourceOp.status;
+
     sourceOp.zone = targetOp.zone;
-    if (targetOp.zone === 'ilhas') {
-      sourceOp.bancadaId = targetOp.bancadaId;
-    }
+    sourceOp.posCode = targetOp.posCode;
+    sourceOp.bancadaId = targetOp.bancadaId;
+    sourceOp.status = (targetOp.zone === 'inactive') ? 'OFF' : (targetOp.zone === 'external_synergy') ? 'SYNERGY_EXT' : 'PRESENT';
+    if (sourceOp.status === 'PRESENT') sourceOp.lastWorkingZone = sourceOp.zone;
 
-    if (targetOp.zone !== 'inactive' && targetOp.zone !== 'external_synergy') {
-      sourceOp.lastWorkingZone = targetOp.zone;
-      sourceOp.status = 'PRESENT';
-    } else if (targetOp.zone === 'inactive') {
-      sourceOp.status = 'OFF';
-    } else if (targetOp.zone === 'external_synergy') {
-      sourceOp.status = 'SYNERGY_EXT';
-    }
-
-    // Swap positions in the main operators array
-    const sourceIdx = operators.indexOf(sourceOp);
-    const targetIdx = operators.indexOf(targetOp);
-
-    if (sourceIdx !== -1 && targetIdx !== -1) {
-      operators[sourceIdx] = targetOp;
-      operators[targetIdx] = sourceOp;
-    }
+    targetOp.zone = tempZone;
+    targetOp.posCode = tempPosCode;
+    targetOp.bancadaId = tempBancadaId;
+    targetOp.status = (tempZone === 'inactive') ? 'OFF' : (tempZone === 'external_synergy') ? 'SYNERGY_EXT' : 'PRESENT';
+    if (targetOp.status === 'PRESENT') targetOp.lastWorkingZone = targetOp.zone;
 
     saveOperatorsToStorage(operators);
     renderAll();
   }
 
-  // Move operator to a zone or specific bancada
-  function moveOperatorToZone(opId, targetZoneId, targetBancadaId = null) {
+  // Move operator to a general zone (Pool, Sinergia, Folga, Ilhas, Atrelamento)
+  function moveOperatorToZone(opId, targetZoneId, targetBancadaId = null, targetPosCode = null) {
     const op = operators.find(o => o.id === opId);
     if (!op) return;
 
     op.zone = targetZoneId;
+    op.bancadaId = targetBancadaId || null;
+
+    if (targetZoneId === 'atrelamento') {
+      if (targetPosCode) {
+        op.posCode = targetPosCode;
+      } else {
+        const atrelOps = operators.filter(o => o.zone === 'atrelamento' && o.id !== opId && o.status === 'PRESENT');
+        const usedCodes = new Set(atrelOps.map(o => o.posCode));
+        const allCandidates = ['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08'];
+        op.posCode = allCandidates.find(c => !usedCodes.has(c)) || `A0${atrelOps.length + 1}`;
+      }
+      op.role = 'REP 1';
+      op.lastPosCode = op.posCode;
+      op.lastWorkingZone = 'atrelamento';
+    } else if (targetZoneId === 'ilhas') {
+      if (!targetBancadaId && op.lastBancadaId) op.bancadaId = op.lastBancadaId;
+    } else {
+      op.posCode = targetPosCode || null;
+    }
 
     if (targetZoneId === 'inactive') {
       op.status = 'OFF';
@@ -541,39 +983,24 @@ document.addEventListener('DOMContentLoaded', () => {
       op.status = 'SYNERGY_EXT';
     } else {
       op.status = 'PRESENT';
-      op.lastWorkingZone = targetZoneId; // Save active post!
+      op.lastWorkingZone = targetZoneId;
     }
 
-    if (targetZoneId === 'ilhas') {
-      if (targetBancadaId) {
-        op.bancadaId = targetBancadaId;
-      } else {
-        // If no specific bancada target, assign to existing or new
-        const activeBancadaIds = Array.from(document.querySelectorAll('.ilha-pair-box')).map(el => el.dataset.bancadaId);
-        op.bancadaId = activeBancadaIds.length > 0 ? activeBancadaIds[0] : `bancada-${Date.now()}`;
-      }
-
-      // If operator has a Fixed Group, move group partners too!
+    // If operator belongs to a fixed group and is moved to a bancada, move partners too
+    if (targetZoneId === 'ilhas' && targetBancadaId) {
       const groupRec = getGroupForOperator(op.id, fixedGroups);
       if (groupRec) {
         groupRec.opIds.forEach(id => {
-          const partnerOp = operators.find(o => o.id === id);
-          if (partnerOp && partnerOp.status === 'PRESENT') {
-            partnerOp.zone = 'ilhas';
-            partnerOp.lastWorkingZone = 'ilhas';
-            partnerOp.bancadaId = groupRec.id;
+          if (id !== op.id) {
+            const partnerOp = operators.find(o => o.id === id);
+            if (partnerOp && partnerOp.status === 'PRESENT') {
+              partnerOp.zone = 'ilhas';
+              partnerOp.lastWorkingZone = 'ilhas';
+              partnerOp.bancadaId = targetBancadaId;
+            }
           }
         });
       }
-    } else {
-      op.bancadaId = null;
-    }
-
-    // Move op to end of array
-    const idx = operators.indexOf(op);
-    if (idx !== -1) {
-      operators.splice(idx, 1);
-      operators.push(op);
     }
 
     saveOperatorsToStorage(operators);
@@ -581,36 +1008,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // Drag and Drop Engine Setup
+  // Drag and Drop Setup for Support Panels and General Zones
   // --------------------------------------------------------------------------
   function setupDragAndDrop() {
-    const dropZones = document.querySelectorAll('.zone-card, .buffer-sub-box, .ilha-pair-box, .panel-box');
+    const dropPanels = document.querySelectorAll('.bp-panel, .bp-cards-drop-area, .bp-mesa-box');
 
-    dropZones.forEach(zone => {
-      const zoneId = zone.dataset.zoneId || (zone.classList.contains('zone-buffer') ? 'buffer_guardioes' : null);
+    dropPanels.forEach(panel => {
+      const zoneId = panel.dataset.zoneId || panel.closest('[data-zone-id]')?.dataset.zoneId;
       if (!zoneId) return;
 
-      zone.addEventListener('dragover', (e) => {
+      panel.addEventListener('dragover', (e) => {
         e.preventDefault();
-        zone.classList.add('drag-over');
+        panel.classList.add('drag-over');
       });
 
-      zone.addEventListener('dragleave', () => {
-        zone.classList.remove('drag-over');
+      panel.addEventListener('dragleave', (e) => {
+        if (!panel.contains(e.relatedTarget)) {
+          panel.classList.remove('drag-over');
+        }
       });
 
-      zone.addEventListener('drop', (e) => {
+      panel.addEventListener('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        zone.classList.remove('drag-over');
+        panel.classList.remove('drag-over');
         if (!draggedOpId) return;
 
-        let targetBancadaId = null;
-        if (zone.classList.contains('ilha-pair-box') && zone.dataset.bancadaId) {
-          targetBancadaId = zone.dataset.bancadaId;
-        }
-
-        moveOperatorToZone(draggedOpId, zoneId, targetBancadaId);
+        moveOperatorToZone(draggedOpId, zoneId);
       });
     });
   }
@@ -645,12 +1069,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const zoneName = REWORK_ZONES[op.zone]?.name || op.zone;
       const isLeader = op.role === 'Líder Operacional';
       const leaderStar = isLeader ? '⭐ ' : '';
+      const posBadgeHtml = op.posCode ? `<span class="pos-code-badge" style="font-size:0.65rem; padding:0.05rem 0.35rem; margin-right:0.3rem;">${op.posCode}</span>` : '';
       const groupRecord = getGroupForOperator(op.id, fixedGroups);
       const fixedIconHtml = groupRecord ? `<span title="Bancada Fixada 🔒" style="color:#d8b4fe; font-size:0.75rem;">🔒 Bancada Fixa</span>` : '';
 
       tr.innerHTML = `
         <td>
-          <strong style="color:var(--text-primary); display:block;">${leaderStar}${op.name} ${fixedIconHtml}</strong>
+          <strong style="color:var(--text-primary); display:block;">${posBadgeHtml}${leaderStar}${op.name} ${fixedIconHtml}</strong>
           <span style="font-size:0.7rem; color:var(--text-muted);">RE: ${op.re}</span>
         </td>
         <td><span class="badge-sector">Turma ${op.turma}</span></td>
@@ -742,9 +1167,29 @@ document.addEventListener('DOMContentLoaded', () => {
           op.turma = turma;
           op.jantar = jantar;
           op.role = role;
-          op.zone = zone;
-          if (zone !== 'inactive' && zone !== 'external_synergy') op.lastWorkingZone = zone;
-          op.status = status;
+          
+          if (status === 'OFF' || status === 'ABSENT' || zone === 'inactive') {
+            if (op.zone !== 'inactive') {
+              op.lastWorkingZone = op.zone;
+              if (op.bancadaId) op.lastBancadaId = op.bancadaId;
+              if (op.posCode) op.lastPosCode = op.posCode;
+            }
+            op.status = (status === 'PRESENT') ? 'OFF' : status;
+            op.zone = 'inactive';
+            op.bancadaId = null;
+            op.posCode = null;
+          } else {
+            op.status = status;
+            if (zone === 'inactive') {
+              // Returned to present: restore position/bench
+              op.zone = op.lastWorkingZone || (op.lastBancadaId ? 'ilhas' : 'dock');
+              op.bancadaId = op.lastBancadaId || null;
+              op.posCode = op.lastPosCode || null;
+            } else {
+              op.zone = zone;
+              if (zone !== 'inactive' && zone !== 'external_synergy') op.lastWorkingZone = zone;
+            }
+          }
           op.avatar = avatar;
         }
       } else {
@@ -833,17 +1278,18 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnExport) {
     btnExport.addEventListener('click', () => {
       let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Nome;RE;Turma;Horario_Janta;Cargo;Setor_Rework;Status\n";
+      csvContent += "Codigo_Posicao;Nome;RE;Turma;Horario_Janta;Cargo;Setor_Rework;Status\n";
 
       operators.forEach(op => {
+        const posCode = op.posCode || 'SEM_CODIGO';
         const zoneName = REWORK_ZONES[op.zone]?.name || op.zone;
-        csvContent += `"${op.name}";"${op.re}";"${op.turma}";"${op.jantar}";"${op.role}";"${zoneName}";"${op.status}"\n`;
+        csvContent += `"${posCode}";"${op.name}";"${op.re}";"${op.turma}";"${op.jantar}";"${op.role}";"${zoneName}";"${op.status}"\n`;
       });
 
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Escala_REWORK_Turno2_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute("download", `Mapa_Ocupacao_REWORK_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

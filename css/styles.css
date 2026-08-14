@@ -3,21 +3,21 @@
    ========================================================================== */
 
 :root {
-  --bg-main: #0b0f19;
-  --bg-card: #151c2c;
+  --bg-main: #070b14;
+  --bg-card: #0f172a;
   --bg-card-hover: #1e293b;
-  --bg-header: #111827;
-  --bg-input: #1f293d;
-  --border-color: #2b384e;
-  --border-highlight: #3b82f6;
+  --bg-header: #0b1329;
+  --bg-input: #1e293b;
+  --border-color: #1e293b;
+  --border-highlight: #38bdf8;
 
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
 
-  --color-blue: #3b82f6;
+  --color-blue: #38bdf8;
   --color-green: #10b981;
-  --color-purple: #a855f7;
+  --color-purple: #8b5cf6;
   --color-orange: #f97316;
   --color-cyan: #06b6d4;
   --color-red: #ef4444;
@@ -27,12 +27,12 @@
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
   --font-heading: 'Outfit', sans-serif;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 }
 
 * {
@@ -252,9 +252,15 @@ body {
 /* KPI Metrics Bar */
 .kpi-bar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1rem;
   padding: 1.25rem 1.5rem 0.5rem 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .kpi-bar {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
 }
 
 .kpi-card {
@@ -826,18 +832,166 @@ body {
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
-.badge-group-locked {
-  color: #e9d5ff;
-  background: rgba(168, 85, 247, 0.25);
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-size: 0.62rem;
+/* ==========================================================================
+   MAPA DE OCUPAÇÃO DE POSIÇÕES FÍSICAS (B01, I01, A01, F01, O01, P01)
+   ========================================================================== */
+
+.position-kpi-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.pos-kpi-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.pos-kpi-title {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pos-kpi-val {
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
   font-weight: 700;
+}
+
+.pos-kpi-val.pos-occupied {
+  color: var(--color-green);
+}
+
+.pos-kpi-val.pos-vacant {
+  color: var(--color-orange);
+}
+
+.pos-sector-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.pos-chip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
+
+.pos-chip strong {
+  color: var(--text-primary);
+}
+
+.pos-slot-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 0.4rem;
+  min-height: 75px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.pos-slot-box.is-occupied {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.pos-slot-box.is-vacant {
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  opacity: 0.85;
+}
+
+.pos-slot-box.is-vacant:hover {
+  border-color: var(--color-blue);
+  opacity: 1;
+}
+
+.pos-slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+.pos-code-badge {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #fff;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.65rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.pos-slot-box.is-vacant .pos-code-badge {
+  background: rgba(100, 116, 139, 0.3);
+  color: var(--text-muted);
+}
+
+.pos-role-name {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vacant-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.badge-vago {
+  background: rgba(100, 116, 139, 0.2);
+  color: var(--text-muted);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.badge-ocupada {
+  background: rgba(16, 185, 129, 0.2);
+  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 
 
 
@@ -1299,3 +1453,901 @@ body {
     background: #fff;
   }
 }
+/* ==========================================================================
+   BLUEPRINT MAP — Layout Flat, Moderno & Operacional (SaaS Enterprise UI)
+   ========================================================================== */
+
+.floor-grid-container {
+  display: block;
+  width: 100%;
+}
+
+.blueprint-map {
+  background: #0b1329;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-family: var(--font-family);
+  color: #ffffff;
+  overflow: hidden;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+/* ── CABEÇALHO SUPERIOR (50% Saída das Cores | 50% Entrada de Buffer) ── */
+.bp-top-header-row {
+  display: flex;
+  flex-direction: row;
+  border-bottom: 1px solid #1e293b;
+  background: #090e1a;
+}
+
+.bp-hdr-box {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.bp-hdr-divider {
+  width: 0;
+  border-left: 1px solid #1e293b;
+  flex-shrink: 0;
+}
+
+/* ── SEÇÃO SUPERIOR: 50% FECHAMENTO AUT & 50% BUFFER ──────────────── */
+.bp-section-top {
+  display: flex;
+  flex-direction: row;
+  min-height: 280px;
+  border-bottom: 0;
+}
+
+/* ── Fechamento AUT (50% Topo Esquerda) ── */
+.bp-top-left-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  padding: 8px 12px;
+  gap: 8px;
+  background: #0b1329;
+}
+
+.bp-vert-strip-box {
+  width: 26px;
+  border: 1px solid #1e293b;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #131d35;
+  flex-shrink: 0;
+}
+
+.bp-vert-strip-label {
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bp-vert-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.bp-fech-aut-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.bp-rack-box {
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #94a3b8;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: 4px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.bp-slot-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.bp-v-dashed-divider {
+  width: 0;
+  border-left: 1px solid #1e293b;
+  flex-shrink: 0;
+}
+
+/* ── BUFFER (50% Topo Direita) ── */
+.bp-top-right-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: #0b1329;
+  overflow: hidden;
+}
+
+.bp-buffer-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.bp-buffer-title {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f1f5f9;
+  text-transform: uppercase;
+}
+
+.bp-ops-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  color: #94a3b8;
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.bp-ops-inline .ops-select {
+  background: transparent;
+  color: #38bdf8;
+  border: none;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+}
+
+.bp-ops-inline .ops-select option {
+  background: #111827;
+  color: #ffffff;
+}
+
+.bp-zone-count {
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #10b981;
+  min-width: 18px;
+  text-align: right;
+}
+
+.bp-buffer-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  align-items: stretch;
+  overflow-x: auto;
+}
+
+.bp-tall-rack-box {
+  width: 26px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.bp-tall-rack-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  white-space: nowrap;
+  text-align: center;
+  padding: 4px 0;
+}
+
+.bp-rack-cpt-highlight {
+  border-color: #334155;
+}
+
+.bp-cpt-red-box {
+  width: 100%;
+  background: rgba(239, 68, 68, 0.15);
+  border-top: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-family: var(--font-heading);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding: 4px 0;
+  margin-top: auto;
+  border-radius: 0 0 3px 3px;
+}
+
+.bp-lane-col {
+  flex: 1;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 1px;
+}
+
+.bp-lane-subtext {
+  font-size: 0.46rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.1;
+  margin: 1px 0;
+}
+
+/* ── DIVISÓRIA HORIZONTAL CENTRAL (50/50 COM MESAS OPS) ───────────── */
+.bp-middle-divider-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  position: relative;
+  min-height: 48px;
+  background: #090e1a;
+  border-top: 1px solid #1e293b;
+  border-bottom: 1px solid #1e293b;
+}
+
+.bp-middle-half {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+}
+
+.bp-v-dashed-divider-node {
+  width: 0;
+  border-left: 1px solid #1e293b;
+  height: 100%;
+  flex-shrink: 0;
+}
+
+.bp-mesa-box {
+  background: #131d35;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 3px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  max-width: 145px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.bp-mesa-header {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.bp-mesa-slot {
+  width: 100%;
+}
+
+/* ── SEÇÃO INFERIOR: 50% ATRELAMENTO/CPT & 50% ILHAS ──────────────── */
+.bp-section-bottom {
+  display: flex;
+  flex-direction: row;
+  min-height: 360px;
+  border-bottom: 1px solid #1e293b;
+}
+
+/* ── Atrelamento & Fechamento CPT (50% Inferior Esquerda) ── */
+.bp-bottom-left-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0b1329;
+}
+
+.bp-atrelamento-sec {
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: #0f172a;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bp-atrelamento-sec.drag-over {
+  background: rgba(56, 189, 248, 0.1) !important;
+  border-color: #38bdf8 !important;
+}
+
+.bp-atrel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.bp-sub-hdr {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f1f5f9;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.bp-atrel-rua-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 5px;
+  border: 1px solid #1e293b;
+  background: #131d35;
+  transition: all 0.15s;
+}
+
+.bp-atrel-rua-block.drag-over {
+  background: rgba(56, 189, 248, 0.12) !important;
+  border-color: #38bdf8 !important;
+}
+
+.bp-atrel-slots-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  min-height: 28px;
+}
+
+.bp-atrel-add-target {
+  height: 20px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.05);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.48rem;
+  font-weight: 700;
+  color: #38bdf8;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 2px;
+}
+
+.bp-atrel-add-target:hover,
+.bp-atrel-add-target.drag-over {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.bp-fech-cpt-sec {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  position: relative;
+}
+
+.bp-fech-cpt-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.bp-cpt-slots-row {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* ── ILHAS (50% Inferior Direita - 4x4 Grid = 16 Bancadas) ── */
+.bp-bottom-right-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: #0b1329;
+  overflow: hidden;
+}
+
+.bp-ilhas-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.bp-ilhas-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.bp-ilhas-title {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f1f5f9;
+  text-transform: uppercase;
+}
+
+.bp-ilhas-sub {
+  font-size: 0.55rem;
+  color: #64748b;
+}
+
+.bp-ilhas-4x4-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  flex: 1;
+  align-content: start;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+/* ── Bancada Individual dentro das Ilhas (Suporte Flat a 2+ operadores) ── */
+.bp-bancada-card-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  position: relative;
+  transition: all 0.15s ease;
+  min-height: 70px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.bp-bancada-card-unit:hover {
+  border-color: #38bdf8;
+  background: #131d35;
+}
+
+.bp-bancada-card-unit.is-fixed {
+  border-color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.bp-bancada-card-unit.pair-mismatch {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.bp-workbench-table {
+  width: 100%;
+  height: 20px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  color: #f1f5f9;
+  box-shadow: none;
+}
+
+.bp-bench-id {
+  font-family: var(--font-heading);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #38bdf8;
+}
+
+.bp-bench-count {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.bp-bench-lock-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.65rem;
+  line-height: 1;
+  padding: 0;
+  transition: transform 0.15s;
+  color: #94a3b8;
+}
+
+.bp-bench-lock-btn:hover {
+  transform: scale(1.15);
+}
+
+/* Área de drop de múltiplos operadores na bancada */
+.bp-bancada-ops-drop {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 48px;
+  border-radius: 4px;
+  padding: 1px;
+  transition: background 0.15s, outline 0.15s;
+}
+
+.bp-bancada-card-unit.drag-over,
+.bp-bancada-ops-drop.drag-over {
+  background: rgba(56, 189, 248, 0.12) !important;
+  outline: 1.5px dashed #38bdf8 !important;
+}
+
+/* Aviso explicativo de Turmas Divergentes */
+.bp-bancada-warning {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 0.44rem;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  line-height: 1.1;
+  cursor: help;
+}
+
+.bp-bancada-empty-slot {
+  height: 25px;
+  border: 1px dashed #334155;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.5rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.bp-bancada-empty-slot:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+}
+
+/* Botão / Alvo explícito para Adicionar Operador na Bancada */
+.bp-bancada-add-target {
+  height: 19px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.05);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.46rem;
+  font-weight: 700;
+  color: #38bdf8;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 1px;
+}
+
+.bp-bancada-add-target:hover,
+.bp-bancada-add-target.drag-over {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.18);
+  color: #ffffff;
+}
+
+/* ── SLOTS DE POSIÇÃO (Containers) ─────────────────────────────────── */
+.bp-slot-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 26px;
+}
+
+/* ── ULTRA COMPACT OPERATOR CARD (Modern Flat UI) ───────────────────── */
+.bp-card {
+  width: 100%;
+  height: 26px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: grab;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.bp-card:active {
+  cursor: grabbing;
+}
+
+.bp-card:hover {
+  background: #273549;
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+.bp-card.dragging {
+  opacity: 0.35;
+  transform: scale(0.95);
+}
+
+.bp-card.drag-target {
+  outline: 1.5px dashed #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  transform: scale(1.01);
+}
+
+/* Avatar com Inicial & Cor Flat da Turma */
+.bp-card-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.bp-card-avatar.turma-AA { background: #ef4444; }
+.bp-card-avatar.turma-AB { background: #eab308; color: #0f172a; font-weight: 900; }
+.bp-card-avatar.turma-AC { background: #06b6d4; }
+.bp-card-avatar.turma-AD { background: #a855f7; }
+.bp-card-avatar.turma-B  { background: #f97316; }
+
+/* Status Styling */
+.bp-card.status-OFF {
+  opacity: 0.65;
+  background: #182030;
+  border-color: #273549;
+}
+
+.bp-card.status-ABSENT {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.bp-card.status-SYNERGY_EXT {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.1);
+}
+
+.bp-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+}
+
+.bp-card-name {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+
+.bp-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.46rem;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+.bp-card-pos {
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.bp-card-turma {
+  font-weight: 700;
+  font-size: 0.44rem;
+  border-radius: 3px;
+  padding: 1px 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+}
+
+/* ── EMPTY POSITION SLOT (VAGO / LIVRE) ────────────────────────────── */
+.bp-slot-empty {
+  width: 100%;
+  height: 26px;
+  border: 1px dashed #334155;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  color: #64748b;
+  background: rgba(30, 41, 59, 0.3);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.bp-slot-empty:hover,
+.bp-slot-empty.slot-drag-over {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  color: #38bdf8;
+  transform: scale(1.01);
+}
+
+.bp-slot-plus {
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #64748b;
+}
+
+.bp-slot-label {
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.bp-slot-role {
+  font-size: 0.44rem;
+  color: #64748b;
+}
+
+/* ── PAINÉIS DE SUPORTE INFERIORES ─────────────────────────────────── */
+.bp-bottom-panels {
+  display: flex;
+  flex-direction: row;
+  border-top: 1px solid #1e293b;
+  min-height: 105px;
+  background: #090e1a;
+  padding: 8px 12px;
+  gap: 10px;
+}
+
+.bp-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.bp-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #334155;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+  background: #1e293b;
+}
+
+.bp-panel-header i {
+  width: 13px;
+  height: 13px;
+  opacity: 0.8;
+}
+
+.bp-panel-synergy .bp-panel-header { color: #fb923c; }
+.bp-panel-inactive .bp-panel-header { color: #f87171; }
+
+.bp-cards-drop-area {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px;
+  min-height: 65px;
+  align-content: flex-start;
+  overflow-y: auto;
+  max-height: 110px;
+  background: #0f172a;
+}
+
+.bp-cards-drop-area.drag-over {
+  background: rgba(56, 189, 248, 0.08);
+  outline: 1.5px dashed #38bdf8;
+}
+
+
+
+

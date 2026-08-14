@@ -2,26 +2,107 @@
    OpSinergia REWORK - Clean Dataset (130 Real Operators, Buffer Subzones, Ilhas Pairs & Ops Responsável)
    ========================================================================== */
 
-const STORAGE_KEY_OPERATORS = 'op_rework_operators_v6';
-const STORAGE_KEY_OPS_SUPERVISORS = 'op_rework_ops_supervisors_v2';
-const STORAGE_KEY_FIXED_PAIRS = 'op_rework_fixed_pairs_v1';
-
+const STORAGE_KEY_OPERATORS = 'op_rework_operators_v9';
+const STORAGE_KEY_OPS_SUPERVISORS = 'op_rework_ops_supervisors_v4';
+const STORAGE_KEY_FIXED_PAIRS = 'op_rework_fixed_pairs_v3';
+const STORAGE_KEY_FIXED_GROUPS = 'op_rework_fixed_groups_v5';
 
 // Preset Zones Definition for REWORK
 const REWORK_ZONES = {
-  buffer_guardioes: { id: 'buffer_guardioes', name: 'GUARDIÕES DO BUFFER', parent: 'buffer', target: 10, desc: 'Gestão e controle do estoque intermediário' },
-  buffer_saida: { id: 'buffer_saida', name: 'BUFFER DE SAÍDA', parent: 'buffer', target: 10, desc: 'Preparação e liberação de paletes' },
-  ilhas: { id: 'ilhas', name: 'ILHAS', target: 25, desc: 'Bancadas de reprocessamento em Duplas da mesma Turma' },
-  oportunidades: { id: 'oportunidades', name: 'ILHA DA PROSPERIDADE', target: 15, desc: 'Tratamento de itens especiais & Salvados' },
-  atrelamento: { id: 'atrelamento', name: 'ATRELAMENTO', target: 20, desc: 'Vinculação de etiquetas e SKUs' },
-  fechamento_aut: { id: 'fechamento_aut', name: 'FECHAMENTO AUT', target: 10, desc: 'Empacotamento & Paletização Aut.' },
-  fechamento_cpt: { id: 'fechamento_cpt', name: 'FECHAMENTO CPT', target: 10, desc: 'Corte de horário & Expedição crítica' },
+  buffer_guardioes: { id: 'buffer_guardioes', name: 'GUARDIÕES DO BUFFER', parent: 'buffer', target: 2, desc: 'Gestão e controle do estoque intermediário' },
+  buffer_saida: { id: 'buffer_saida', name: 'BUFFER DE SAÍDA', parent: 'buffer', target: 6, desc: 'Preparação e liberação de paletes' },
+  ilhas: { id: 'ilhas', name: 'ILHAS', target: 32, desc: '16 Bancadas em Duplas da mesma Turma' },
+  oportunidades: { id: 'oportunidades', name: 'ILHAS DA PROSPERIDADE', target: 5, desc: 'Tratamento de itens especiais & Salvados' },
+  atrelamento: { id: 'atrelamento', name: 'ATRELAMENTO', target: 4, desc: 'Vinculação de etiquetas e SKUs' },
+  fechamento_aut: { id: 'fechamento_aut', name: 'FECHAMENTO AUT', target: 2, desc: 'Empacotamento & Paletização Aut.' },
+  fechamento_cpt: { id: 'fechamento_cpt', name: 'FECHAMENTO CPT', target: 4, desc: 'Corte de horário & Expedição crítica' },
+  ops: { id: 'ops', name: 'MESAS OPS / LIDERANÇA', target: 2, desc: 'Supervisão operacional' },
   dock: { id: 'dock', name: 'POOL DE APOIO / SEM POSTO', target: 0, desc: 'Operadores aguardando definição de posto' },
   external_synergy: { id: 'external_synergy', name: 'SINERGIA EXTERNA', target: 0, desc: 'Operadores alocados fora do Rework' },
   inactive: { id: 'inactive', name: 'FOLGA / FALTA / ATESTADO', target: 0, desc: 'Indisponíveis na operação hoje' }
 };
 
-// Available Ops Supervisors for selection (Clean list per user request)
+// Master list of all physical workstation positions on the shop floor
+const POSITIONS_MASTER = [
+  // GUARDIÕES DO BUFFER (B01 - B02)
+  { code: 'B01', area: 'buffer_guardioes', areaName: 'Buffer', defaultRole: 'Guardião do Buffer', label: 'B01 — Guardião Buffer' },
+  { code: 'B02', area: 'buffer_guardioes', areaName: 'Buffer', defaultRole: 'Guardião do Buffer', label: 'B02 — Guardião Buffer' },
+
+  // BUFFER DE SAÍDA (B03 - B06)
+  { code: 'B03', area: 'buffer_saida', areaName: 'Buffer', defaultRole: 'Buffer de Saída', label: 'B03 — Buffer Saída' },
+  { code: 'B04', area: 'buffer_saida', areaName: 'Buffer', defaultRole: 'Buffer de Saída', label: 'B04 — Buffer Saída' },
+  { code: 'B05', area: 'buffer_saida', areaName: 'Buffer', defaultRole: 'Buffer de Saída', label: 'B05 — Buffer Saída' },
+  { code: 'B06', area: 'buffer_saida', areaName: 'Buffer', defaultRole: 'Buffer de Saída', label: 'B06 — Buffer Saída' },
+
+  // ATRELAMENTO BUFFER (B07 - B08)
+  { code: 'B07', area: 'buffer_saida', areaName: 'Buffer', defaultRole: 'Atrelamento Buffer', label: 'B07 — Atrel. Buffer' },
+  { code: 'B08', area: 'buffer_saida', areaName: 'Buffer', defaultRole: 'Atrelamento Buffer', label: 'B08 — Atrel. Buffer' },
+
+  // OPORTUNIDADES / ILHAS DA PROSPERIDADE (P01 - P05)
+  { code: 'P01', area: 'oportunidades', areaName: 'Prosperidade', defaultRole: 'REP 1', label: 'P01 — REP 1 Prosp.' },
+  { code: 'P02', area: 'oportunidades', areaName: 'Prosperidade', defaultRole: 'REP 1', label: 'P02 — REP 1 Prosp.' },
+  { code: 'P03', area: 'oportunidades', areaName: 'Prosperidade', defaultRole: 'REP 1', label: 'P03 — REP 1 Prosp.' },
+  { code: 'P04', area: 'oportunidades', areaName: 'Prosperidade', defaultRole: 'REP 1', label: 'P04 — REP 1 Prosp.' },
+  { code: 'P05', area: 'oportunidades', areaName: 'Prosperidade', defaultRole: 'REP 1', label: 'P05 — REP 1 Prosp.' },
+
+  // ILHAS (I01 - I32)
+  { code: 'I01', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 1, defaultRole: 'REP 1', label: 'I01 — Bancada 1 (Cima)' },
+  { code: 'I02', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 1, defaultRole: 'REP 1', label: 'I02 — Bancada 1 (Baixo)' },
+  { code: 'I03', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 2, defaultRole: 'REP 1', label: 'I03 — Bancada 2 (Cima)' },
+  { code: 'I04', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 2, defaultRole: 'REP 1', label: 'I04 — Bancada 2 (Baixo)' },
+  { code: 'I05', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 3, defaultRole: 'REP 1', label: 'I05 — Bancada 3 (Cima)' },
+  { code: 'I06', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 3, defaultRole: 'REP 1', label: 'I06 — Bancada 3 (Baixo)' },
+  { code: 'I07', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 4, defaultRole: 'REP 1', label: 'I07 — Bancada 4 (Cima)' },
+  { code: 'I08', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 4, defaultRole: 'REP 1', label: 'I08 — Bancada 4 (Baixo)' },
+  { code: 'I09', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 5, defaultRole: 'REP 1', label: 'I09 — Bancada 5 (Cima)' },
+  { code: 'I10', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 5, defaultRole: 'REP 1', label: 'I10 — Bancada 5 (Baixo)' },
+  { code: 'I11', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 6, defaultRole: 'REP 1', label: 'I11 — Bancada 6 (Cima)' },
+  { code: 'I12', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 6, defaultRole: 'REP 1', label: 'I12 — Bancada 6 (Baixo)' },
+  { code: 'I13', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 7, defaultRole: 'REP 1', label: 'I13 — Bancada 7 (Cima)' },
+  { code: 'I14', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 7, defaultRole: 'REP 1', label: 'I14 — Bancada 7 (Baixo)' },
+  { code: 'I15', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 8, defaultRole: 'REP 1', label: 'I15 — Bancada 8 (Cima)' },
+  { code: 'I16', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 8, defaultRole: 'REP 1', label: 'I16 — Bancada 8 (Baixo)' },
+  { code: 'I17', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 9, defaultRole: 'REP 1', label: 'I17 — Bancada 9 (Cima)' },
+  { code: 'I18', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 9, defaultRole: 'REP 1', label: 'I18 — Bancada 9 (Baixo)' },
+  { code: 'I19', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 10, defaultRole: 'REP 1', label: 'I19 — Bancada 10 (Cima)' },
+  { code: 'I20', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 10, defaultRole: 'REP 1', label: 'I20 — Bancada 10 (Baixo)' },
+  { code: 'I21', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 11, defaultRole: 'REP 1', label: 'I21 — Bancada 11 (Cima)' },
+  { code: 'I22', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 11, defaultRole: 'REP 1', label: 'I22 — Bancada 11 (Baixo)' },
+  { code: 'I23', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 12, defaultRole: 'REP 1', label: 'I23 — Bancada 12 (Cima)' },
+  { code: 'I24', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 12, defaultRole: 'REP 1', label: 'I24 — Bancada 12 (Baixo)' },
+  { code: 'I25', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 13, defaultRole: 'REP 1', label: 'I25 — Bancada 13 (Cima)' },
+  { code: 'I26', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 13, defaultRole: 'REP 1', label: 'I26 — Bancada 13 (Baixo)' },
+  { code: 'I27', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 14, defaultRole: 'REP 1', label: 'I27 — Bancada 14 (Cima)' },
+  { code: 'I28', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 14, defaultRole: 'REP 1', label: 'I28 — Bancada 14 (Baixo)' },
+  { code: 'I29', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 15, defaultRole: 'REP 1', label: 'I29 — Bancada 15 (Cima)' },
+  { code: 'I30', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 15, defaultRole: 'REP 1', label: 'I30 — Bancada 15 (Baixo)' },
+  { code: 'I31', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 16, defaultRole: 'REP 1', label: 'I31 — Bancada 16 (Cima)' },
+  { code: 'I32', area: 'ilhas', areaName: 'Ilhas', bancadaIndex: 16, defaultRole: 'REP 1', label: 'I32 — Bancada 16 (Baixo)' },
+
+  // FECHAMENTO AUT (F01 - F02)
+  { code: 'F01', area: 'fechamento_aut', areaName: 'Fechamento AUT', defaultRole: 'REP 1', label: 'F01 — REP 1 Aut' },
+  { code: 'F02', area: 'fechamento_aut', areaName: 'Fechamento AUT', defaultRole: 'REP 1', label: 'F02 — REP 1 Aut' },
+
+  // ATRELAMENTO (A01 - A06: Ruas de CPTs)
+  { code: 'A01', area: 'atrelamento', areaName: 'Atrelamento', defaultRole: 'REP 1', label: 'A01 — REP 1 Atrel. (Rua 1)' },
+  { code: 'A02', area: 'atrelamento', areaName: 'Atrelamento', defaultRole: 'REP 1', label: 'A02 — REP 1 Atrel. (Rua 1)' },
+  { code: 'A03', area: 'atrelamento', areaName: 'Atrelamento', defaultRole: 'REP 1', label: 'A03 — REP 1 Atrel. (Rua 2)' },
+  { code: 'A04', area: 'atrelamento', areaName: 'Atrelamento', defaultRole: 'REP 1', label: 'A04 — REP 1 Atrel. (Rua 2)' },
+  { code: 'A05', area: 'atrelamento', areaName: 'Atrelamento', defaultRole: 'REP 1', label: 'A05 — REP 1 Atrel.' },
+  { code: 'A06', area: 'atrelamento', areaName: 'Atrelamento', defaultRole: 'REP 1', label: 'A06 — REP 1 Atrel.' },
+
+  // FECHAMENTO CPT (F04 - F07)
+  { code: 'F04', area: 'fechamento_cpt', areaName: 'Fechamento CPT', defaultRole: 'REP 1', label: 'F04 — REP 1 CPT' },
+  { code: 'F05', area: 'fechamento_cpt', areaName: 'Fechamento CPT', defaultRole: 'REP 1', label: 'F05 — REP 1 CPT' },
+  { code: 'F06', area: 'fechamento_cpt', areaName: 'Fechamento CPT', defaultRole: 'REP 1', label: 'F06 — REP 1 CPT' },
+  { code: 'F07', area: 'fechamento_cpt', areaName: 'Fechamento CPT', defaultRole: 'REP 1', label: 'F07 — REP 1 CPT' },
+
+  // MESAS OPS (O01 - O02)
+  { code: 'O01', area: 'ops', areaName: 'Mesa Ops 2', defaultRole: 'Ops II', label: 'Mesa Ops 2' },
+  { code: 'O02', area: 'ops', areaName: 'Mesa Ops 3', defaultRole: 'Ops III', label: 'Mesa Ops 3' }
+];
+
+// Available Ops Supervisors for selection
 const DEFAULT_OPS_SUPERVISORS = [
   'Pedro',
   'Aline',
@@ -42,7 +123,6 @@ const DEFAULT_OPS_SECTOR_ASSIGNMENTS = {
   fechamento_aut: 'Érica',
   fechamento_cpt: 'Thiago'
 };
-
 
 // Escala Oficial de Folgas por Data (Agosto / 2026)
 const ESCALA_FOLGAS_AGOSTO_2026 = {
@@ -79,7 +159,7 @@ const ESCALA_FOLGAS_AGOSTO_2026 = {
   '2026-08-31': 'AD'
 };
 
-// Raw Operator Data (130 real operators from user file)
+// Raw Operator Data (130 real operators)
 const RAW_OPERATORS_LIST = [
   { name: "ADINALDO ALCANTARA DE SANTANA", re: "2563526", turma: "AB" },
   { name: "ADRIANA BRITO DA SILVA", re: "1952083", turma: "AA" },
@@ -211,37 +291,93 @@ const RAW_OPERATORS_LIST = [
   { name: "YASMIN SILVA DE OLIVEIRA", re: "2115165", turma: "AA" }
 ];
 
-const WORKING_ZONES = [
-  'buffer_guardioes', 'buffer_saida', 'ilhas', 'oportunidades', 
-  'atrelamento', 'fechamento_aut', 'fechamento_cpt'
+// Initial pre-allocation map of active positions
+const INITIAL_SLOT_ASSIGNMENTS = [
+  // BUFFER
+  { posCode: 'B01', zone: 'buffer_guardioes', role: 'Guardião do Buffer' },
+  { posCode: 'B02', zone: 'buffer_guardioes', role: 'Guardião do Buffer' },
+  { posCode: 'B07', zone: 'buffer_saida', role: 'Atrelamento Buffer' },
+  { posCode: 'B08', zone: 'buffer_saida', role: 'Atrelamento Buffer' },
+  { posCode: 'B03', zone: 'buffer_saida', role: 'Buffer de Saída' },
+  { posCode: 'B04', zone: 'buffer_saida', role: 'Buffer de Saída' },
+  { posCode: 'B05', zone: 'buffer_saida', role: 'Buffer de Saída' },
+  { posCode: 'B06', zone: 'buffer_saida', role: 'Buffer de Saída' },
+
+  // PROSPERIDADE
+  { posCode: 'P01', zone: 'oportunidades', role: 'REP 1' },
+  { posCode: 'P02', zone: 'oportunidades', role: 'REP 1' },
+  { posCode: 'P03', zone: 'oportunidades', role: 'REP 1' },
+  { posCode: 'P04', zone: 'oportunidades', role: 'REP 1' },
+  { posCode: 'P05', zone: 'oportunidades', role: 'REP 1' },
+
+  // FECHAMENTO AUT
+  { posCode: 'F01', zone: 'fechamento_aut', role: 'REP 1' },
+  { posCode: 'F02', zone: 'fechamento_aut', role: 'REP 1' },
+
+  // ATRELAMENTO (Ruas de CPTs)
+  { posCode: 'A01', zone: 'atrelamento', role: 'REP 1' },
+  { posCode: 'A02', zone: 'atrelamento', role: 'REP 1' },
+  { posCode: 'A03', zone: 'atrelamento', role: 'REP 1' },
+  { posCode: 'A04', zone: 'atrelamento', role: 'REP 1' },
+
+  // FECHAMENTO CPT
+  { posCode: 'F04', zone: 'fechamento_cpt', role: 'REP 1' },
+  { posCode: 'F05', zone: 'fechamento_cpt', role: 'REP 1' },
+  { posCode: 'F06', zone: 'fechamento_cpt', role: 'REP 1' },
+  { posCode: 'F07', zone: 'fechamento_cpt', role: 'REP 1' },
+
+  // MESAS OPS
+  { posCode: 'O01', zone: 'ops', role: 'Ops II' },
+  { posCode: 'O02', zone: 'ops', role: 'Ops III' }
 ];
+
+// Add Ilhas positions I01 - I32 (16 bancadas x 2)
+for (let b = 1; b <= 16; b++) {
+  const codeA = `I${String((b - 1) * 2 + 1).padStart(2, '0')}`;
+  const codeB = `I${String((b - 1) * 2 + 2).padStart(2, '0')}`;
+  INITIAL_SLOT_ASSIGNMENTS.push({ posCode: codeA, zone: 'ilhas', role: 'REP 1', bancadaId: `bancada-${b}` });
+  INITIAL_SLOT_ASSIGNMENTS.push({ posCode: codeB, zone: 'ilhas', role: 'REP 1', bancadaId: `bancada-${b}` });
+}
 
 // Generate Initial Operators array with Turma, Janta & Folga Rules
 function generateInitialOperators(dateStr = '2026-08-10') {
   const folgaTurmaToday = ESCALA_FOLGAS_AGOSTO_2026[dateStr] || 'AB';
 
+  let slotIndex = 0;
+
   return RAW_OPERATORS_LIST.map((raw, idx) => {
     const isOff = (raw.turma === folgaTurmaToday);
     
-    let role = 'Operador de Rework';
-    if (idx % 12 === 0) role = 'Líder Operacional';
-    else if (idx % 5 === 0) role = 'Conferente';
-    else if (idx % 7 === 0) role = 'Operador de Empilhadeira';
-    else if (idx % 9 === 0) role = 'Auxiliar de Logística';
+    let role = 'REP 1';
+    if (idx % 15 === 0) role = 'Líder Operacional';
 
-    // Janta alternate between 18:30 and 19:30
     const jantar = (idx % 2 === 0) ? '18:30' : '19:30';
 
     let zone = 'inactive';
     let status = 'OFF';
+    let posCode = null;
+    let bancadaId = null;
 
     if (!isOff) {
       status = 'PRESENT';
-      zone = 'dock'; // Todos iniciam sem posto no Pool de Apoio por enquanto!
-
       if (idx === 7) {
         status = 'SYNERGY_EXT';
         zone = 'external_synergy';
+      } else if (slotIndex < INITIAL_SLOT_ASSIGNMENTS.length) {
+        const slot = INITIAL_SLOT_ASSIGNMENTS[slotIndex++];
+        zone = slot.zone;
+        posCode = slot.posCode;
+        role = slot.role || 'REP 1';
+        bancadaId = slot.bancadaId || null;
+      } else {
+        zone = 'dock';
+      }
+    } else {
+      // For off operators, associate their default seat so return from folga restores it
+      if (slotIndex < INITIAL_SLOT_ASSIGNMENTS.length) {
+        const slot = INITIAL_SLOT_ASSIGNMENTS[slotIndex++];
+        posCode = slot.posCode;
+        bancadaId = slot.bancadaId || null;
       }
     }
 
@@ -254,7 +390,11 @@ function generateInitialOperators(dateStr = '2026-08-10') {
       shift: 'Turno 2 (14h-23h)',
       jantar: jantar,
       zone: zone,
-      lastWorkingZone: (zone !== 'inactive') ? zone : 'dock',
+      posCode: posCode,
+      bancadaId: bancadaId,
+      lastBancadaId: bancadaId,
+      lastPosCode: posCode,
+      lastWorkingZone: (zone !== 'inactive') ? zone : (bancadaId ? 'ilhas' : 'dock'),
       status: status,
       avatar: (idx % 4) + 1
     };
@@ -301,9 +441,7 @@ function saveOpsSupervisorsToStorage(supervisorsObj) {
   localStorage.setItem(STORAGE_KEY_OPS_SUPERVISORS, JSON.stringify(supervisorsObj));
 }
 
-const STORAGE_KEY_FIXED_GROUPS = 'op_rework_fixed_groups_v2';
-
-// Persistence Utilities for Fixed Groups (Grupos / Duplas Fixas de 2, 3, 4+ pessoas)
+// Persistence Utilities for Fixed Groups
 function loadFixedGroupsFromStorage() {
   const data = localStorage.getItem(STORAGE_KEY_FIXED_GROUPS);
   if (!data) return [];
@@ -321,8 +459,6 @@ function saveFixedGroupsToStorage(groups) {
 function linkGroupInStorage(opIds) {
   if (!Array.isArray(opIds) || opIds.length === 0) return [];
   const groups = loadFixedGroupsFromStorage();
-  
-  // Remove any existing group associations for any of these opIds
   const opSet = new Set(opIds);
   const filtered = groups.filter(g => !g.opIds.some(id => opSet.has(id)));
   
@@ -357,5 +493,3 @@ function resetToDefaultData(dateStr = '2026-08-10') {
   saveOpsSupervisorsToStorage(DEFAULT_OPS_SECTOR_ASSIGNMENTS);
   return operators;
 }
-
-
